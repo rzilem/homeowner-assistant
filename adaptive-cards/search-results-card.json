@@ -1,0 +1,104 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Search Results",
+          "weight": "Bolder",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${count} result(s) for \"${query}\"",
+          "isSubtle": true,
+          "spacing": "None"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Medium",
+      "$data": "${homeowners}",
+      "items": [
+        {
+          "type": "Container",
+          "style": "default",
+          "separator": true,
+          "items": [
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "width": "stretch",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "${owner_name}",
+                      "weight": "Bolder",
+                      "wrap": true
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "${property_address}",
+                      "size": "Small",
+                      "isSubtle": true,
+                      "wrap": true,
+                      "spacing": "None"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "${community}",
+                      "size": "Small",
+                      "color": "Accent",
+                      "spacing": "None"
+                    }
+                  ]
+                },
+                {
+                  "type": "Column",
+                  "width": "auto",
+                  "verticalContentAlignment": "Center",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "${balance_display}",
+                      "weight": "Bolder",
+                      "color": "${if(balance_status == 'owed', 'Attention', if(balance_status == 'credit', 'Accent', 'Good'))}",
+                      "horizontalAlignment": "Right"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "${collection_status}",
+                      "size": "Small",
+                      "color": "${if(collection_indicator == 'collections', 'Attention', 'Default')}",
+                      "horizontalAlignment": "Right",
+                      "spacing": "None"
+                    }
+                  ]
+                }
+              ],
+              "selectAction": {
+                "type": "Action.OpenUrl",
+                "url": "${vantaca_url}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open Full Search",
+      "url": "https://homeowner-assistant-138752496729.us-central1.run.app/?q=${query}"
+    }
+  ]
+}

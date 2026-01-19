@@ -1,0 +1,43 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "packageName": "com.psprop.homeownerassistant",
+  "developer": {
+    "name": "PS Property Management",
+    "websiteUrl": "https://psprop.net",
+    "privacyUrl": "https://psprop.net/privacy",
+    "termsOfUseUrl": "https://psprop.net/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Homeowner Lookup",
+    "full": "PS Homeowner Assistant"
+  },
+  "description": {
+    "short": "Find any homeowner instantly",
+    "full": "Search 23,752+ homeowner records by phone, address, account, or community. Get instant access to balances, contact info, and Vantaca links."
+  },
+  "accentColor": "#6366f1",
+  "staticTabs": [
+    {
+      "entityId": "homeowner-lookup",
+      "name": "Homeowner Lookup",
+      "contentUrl": "https://homeowner-assistant-138752496729.us-central1.run.app",
+      "websiteUrl": "https://homeowner-assistant-138752496729.us-central1.run.app",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "homeowner-assistant-138752496729.us-central1.run.app",
+    "*.run.app"
+  ]
+}

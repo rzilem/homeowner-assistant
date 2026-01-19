@@ -1,0 +1,107 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${owner_name}",
+                  "weight": "Bolder",
+                  "size": "Large",
+                  "wrap": true
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${collection_status}",
+                  "color": "${if(collection_indicator == 'collections', 'Attention', if(collection_indicator == '60_days', 'Warning', 'Default'))}",
+                  "weight": "Bolder",
+                  "size": "Small",
+                  "isVisible": "${collection_indicator != null}"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${balance_display}",
+                  "weight": "Bolder",
+                  "size": "Large",
+                  "color": "${if(balance_status == 'owed', 'Attention', if(balance_status == 'credit', 'Accent', 'Good'))}",
+                  "horizontalAlignment": "Right"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "BALANCE",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "horizontalAlignment": "Right"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Medium",
+      "items": [
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "Address",
+              "value": "${property_address}"
+            },
+            {
+              "title": "Community",
+              "value": "${community}"
+            },
+            {
+              "title": "Account",
+              "value": "${account_number}"
+            },
+            {
+              "title": "Phone",
+              "value": "${phone}"
+            },
+            {
+              "title": "Email",
+              "value": "${email}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open in Vantaca",
+      "url": "${vantaca_url}",
+      "style": "positive"
+    },
+    {
+      "type": "Action.Submit",
+      "title": "Copy Account #",
+      "data": {
+        "action": "copy",
+        "value": "${account_number}"
+      }
+    }
+  ]
+}

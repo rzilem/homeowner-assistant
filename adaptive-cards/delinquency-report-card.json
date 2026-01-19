@@ -1,0 +1,140 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "warning",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "Delinquency Report",
+                  "weight": "Bolder",
+                  "size": "Medium"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${community}",
+                  "color": "Accent",
+                  "spacing": "None"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "$${formatNumber(total_outstanding, 2)}",
+                  "weight": "Bolder",
+                  "size": "Large",
+                  "color": "Attention",
+                  "horizontalAlignment": "Right"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "TOTAL OUTSTANDING",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "horizontalAlignment": "Right"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "${count} accounts with balance owed",
+      "spacing": "Medium",
+      "isSubtle": true
+    },
+    {
+      "type": "Container",
+      "spacing": "Small",
+      "$data": "${homeowners}",
+      "$when": "${$index < 10}",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "separator": true,
+          "spacing": "Small",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${owner_name}",
+                  "weight": "Bolder",
+                  "size": "Small"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${property_address}",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "spacing": "None",
+                  "wrap": true
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "verticalContentAlignment": "Center",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${balance_display}",
+                  "weight": "Bolder",
+                  "size": "Small",
+                  "color": "Attention",
+                  "horizontalAlignment": "Right"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${collection_status}",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "horizontalAlignment": "Right",
+                  "spacing": "None"
+                }
+              ]
+            }
+          ],
+          "selectAction": {
+            "type": "Action.OpenUrl",
+            "url": "${vantaca_url}"
+          }
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "... and ${subtract(count, 10)} more",
+      "isSubtle": true,
+      "horizontalAlignment": "Center",
+      "$when": "${count > 10}"
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "View Full Report",
+      "url": "https://homeowner-assistant-138752496729.us-central1.run.app/?q=${community}&type=community&delinquent=true",
+      "style": "positive"
+    }
+  ]
+}
