@@ -2143,10 +2143,11 @@
             }
 
             // Hide balance in header for attorney accounts
+            const balanceLabel = h.balance_status === 'credit' ? 'Credit Balance' : 'Balance';
             const balanceHeaderHtml = isAttorney ? '' : `
                         <div class="card-balance">
                             <div class="balance-amount ${balanceClass}">${h.balance_display}</div>
-                            <div class="balance-label">Balance</div>
+                            <div class="balance-label">${balanceLabel}</div>
                         </div>`;
 
             return `
