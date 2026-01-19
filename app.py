@@ -236,12 +236,28 @@ def search():
     # Auto-detect search type
     if search_type == 'auto':
         digits = normalize_phone(query)
+        upper_query = query.upper()
+
+        # Check for phone number (7+ digits)
         if len(digits) >= 7:
             search_type = 'phone'
-        elif query.upper().startswith(('FAL', 'AMC', 'AVA', 'CHA', 'HER', 'HIL', 'SOC', 'VIL', 'WES')):
+        # Check for account number patterns:
+        # 1. Starts with known prefixes (FAL51515)
+        # 2. Pattern like ABC12345 (3 letters + numbers)
+        # 3. Just numbers that are 4-8 digits (could be account without prefix)
+        elif upper_query.startswith(('FAL', 'AMC', 'AVA', 'CHA', 'HER', 'HIL', 'SOC', 'VIL', 'WES', 'VER', 'WIL', 'SAG', 'OAK', 'VIS')):
             search_type = 'account'
+        elif re.match(r'^[A-Z]{2,4}\d{3,8}$', upper_query):
+            # Pattern: 2-4 letters followed by 3-8 digits (like FAL51515)
+            search_type = 'account'
+        elif re.match(r'^\d{4,8}$', query):
+            # Pure numbers 4-8 digits - likely account number without prefix
+            search_type = 'account'
+        # Check for unit/lot patterns (unit 5, lot 12, #5, etc.)
+        elif re.match(r'^(unit|lot|#)\s*\d+', query.lower()):
+            search_type = 'unit'
         else:
-            # Default to general search (searches both name AND address)
+            # Default to general search (searches name, address, AND account)
             search_type = 'general'
 
     # Execute search
@@ -256,7 +272,9 @@ def search():
     elif search_type == 'community':
         return search_by_community(query, delinquent)
     elif search_type == 'account':
-        return search_by_account(query)
+        return search_by_account(query, community_filter)
+    elif search_type == 'unit':
+        return search_by_unit(query, community_filter)
     else:
         return jsonify({'error': 'Invalid search type', 'homeowners': []}), 400
 
@@ -337,11 +355,12 @@ def search_by_name(name, community_filter=None):
 
 
 def search_general(query, community_filter=None):
-    """Search across name AND address fields - most flexible search."""
+    """Search across name, address, account, and unit/lot fields - most flexible search."""
     safe_query = query.replace("'", "''")
+    upper_query = safe_query.upper()
 
-    # Build filter: search in name OR address
-    filter_expr = f"(contains(cr258_owner_name,'{safe_query}') or contains(cr258_property_address,'{safe_query}'))"
+    # Build filter: search in name OR address OR account number
+    filter_expr = f"(contains(cr258_owner_name,'{safe_query}') or contains(cr258_property_address,'{safe_query}') or contains(cr258_accountnumber,'{upper_query}'))"
 
     if community_filter:
         safe_community = community_filter.replace("'", "''")
@@ -351,6 +370,15 @@ def search_general(query, community_filter=None):
 
     if results is None:
         return jsonify({'error': 'Dataverse connection failed', 'homeowners': []}), 503
+
+    # If query looks like a number, also search unit/lot fields
+    if query.isdigit() and not results:
+        unit_filter = f"(cr258_unitnumber eq '{safe_query}' or cr258_lotnumber eq '{safe_query}')"
+        if community_filter:
+            unit_filter = f"contains(cr258_assoc_name,'{safe_community}') and {unit_filter}"
+        unit_results = query_dataverse(unit_filter, top=30)
+        if unit_results:
+            results = results + unit_results if results else unit_results
 
     homeowners = [format_homeowner(r) for r in results]
 
@@ -393,21 +421,87 @@ def search_by_community(community, delinquent_only=False):
     })
 
 
-def search_by_account(account):
-    """Search by account number."""
-    results = query_dataverse(f"cr258_accountnumber eq '{account}'", top=5)
+def search_by_account(account, community_filter=None):
+    """Search by account number - flexible matching."""
+    safe_account = account.replace("'", "''").upper()
 
+    # Try exact match first (case-insensitive via upper)
+    filter_expr = f"cr258_accountnumber eq '{safe_account}'"
+    if community_filter:
+        safe_community = community_filter.replace("'", "''")
+        filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+
+    results = query_dataverse(filter_expr, top=5)
+
+    # If no exact match, try contains search
     if results is None:
         return jsonify({'error': 'Dataverse connection failed', 'homeowners': []}), 503
 
     if not results:
-        results = query_dataverse(f"contains(cr258_accountnumber,'{account}')", top=10)
+        # Try contains match (partial account number)
+        filter_expr = f"contains(cr258_accountnumber,'{safe_account}')"
+        if community_filter:
+            filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+        results = query_dataverse(filter_expr, top=20)
+
+    # If still no results and query is just digits, try with common prefixes
+    if not results and safe_account.isdigit():
+        common_prefixes = ['FAL', 'AVA', 'CHA', 'HER', 'VIS', 'VIL', 'WES', 'HIL', 'OAK', 'SAG']
+        for prefix in common_prefixes:
+            test_account = f"{prefix}{safe_account}"
+            filter_expr = f"cr258_accountnumber eq '{test_account}'"
+            if community_filter:
+                filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+            results = query_dataverse(filter_expr, top=5)
+            if results:
+                break
 
     homeowners = [format_homeowner(r) for r in (results or [])]
 
     return jsonify({
         'search_type': 'account',
         'query': account,
+        'community_filter': community_filter,
+        'homeowners': homeowners,
+        'count': len(homeowners)
+    })
+
+
+def search_by_unit(unit_query, community_filter=None):
+    """Search by unit or lot number."""
+    # Extract the number from patterns like "unit 5", "lot 12", "#5"
+    match = re.search(r'\d+', unit_query)
+    if not match:
+        return jsonify({'error': 'Invalid unit/lot number', 'homeowners': [], 'count': 0}), 400
+
+    number = match.group()
+    safe_number = number.replace("'", "''")
+
+    # Build filter to search unit number OR lot number
+    filter_expr = f"(cr258_unitnumber eq '{safe_number}' or cr258_lotnumber eq '{safe_number}')"
+
+    if community_filter:
+        safe_community = community_filter.replace("'", "''")
+        filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+
+    results = query_dataverse(filter_expr, top=30)
+
+    if results is None:
+        return jsonify({'error': 'Dataverse connection failed', 'homeowners': []}), 503
+
+    # If no exact match, try contains search
+    if not results:
+        filter_expr = f"(contains(cr258_unitnumber,'{safe_number}') or contains(cr258_lotnumber,'{safe_number}'))"
+        if community_filter:
+            filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+        results = query_dataverse(filter_expr, top=30)
+
+    homeowners = [format_homeowner(r) for r in (results or [])]
+
+    return jsonify({
+        'search_type': 'unit',
+        'query': unit_query,
+        'community_filter': community_filter,
         'homeowners': homeowners,
         'count': len(homeowners)
     })
