@@ -938,6 +938,197 @@
             background: var(--gray-200);
         }
 
+        /* ============================================
+           ACCOUNT LEDGER STYLES
+           ============================================ */
+        .ledger-section {
+            margin-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+            padding-top: 1rem;
+        }
+
+        .ledger-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            color: var(--gray-700);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .ledger-toggle:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-300);
+        }
+
+        .ledger-toggle.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .ledger-toggle i {
+            transition: transform 0.2s;
+        }
+
+        .ledger-toggle.active i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .ledger-container {
+            display: none;
+            margin-top: 1rem;
+            overflow: hidden;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .ledger-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 1000px;
+            }
+        }
+
+        .ledger-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .ledger-title {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+
+        .ledger-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .ledger-table thead {
+            background: var(--gray-100);
+        }
+
+        .ledger-table th {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .ledger-table th:nth-child(2),
+        .ledger-table th:nth-child(3),
+        .ledger-table th:nth-child(4) {
+            text-align: right;
+        }
+
+        .ledger-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .ledger-table td:nth-child(2),
+        .ledger-table td:nth-child(3),
+        .ledger-table td:nth-child(4) {
+            text-align: right;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .ledger-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .ledger-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .ledger-date {
+            white-space: nowrap;
+        }
+
+        .ledger-desc {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ledger-amount {
+            font-weight: 500;
+        }
+
+        .ledger-amount.charge {
+            color: var(--danger);
+        }
+
+        .ledger-amount.payment {
+            color: var(--success);
+        }
+
+        .ledger-balance {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .ledger-loading {
+            padding: 2rem;
+            text-align: center;
+            color: var(--gray-500);
+        }
+
+        .ledger-loading i {
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        .ledger-empty {
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+
+        .ledger-error {
+            padding: 1rem;
+            text-align: center;
+            color: var(--danger);
+            background: var(--danger-light);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+        }
+
         /* Loading State */
         .loading {
             padding: 4rem 2rem;
@@ -2288,6 +2479,20 @@
                     ${financialHtml}
                     ${extraContactsHtml}
 
+                    <!-- Account Ledger Section -->
+                    ${!isAttorney ? `
+                    <div class="ledger-section">
+                        <button class="ledger-toggle" data-account="${escapeHtml(h.account_number)}" onclick="toggleLedger(this)">
+                            <i class="fas fa-receipt"></i>
+                            <span>View Account Ledger</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="ledger-container" id="ledger-${escapeHtml(h.account_number).replace(/[^a-zA-Z0-9]/g, '')}">
+                            <!-- Ledger content loads here -->
+                        </div>
+                    </div>
+                    ` : ''}
+
                     <div class="card-actions">
                         ${h.vantaca_url ? `
                             <a href="${escapeHtml(h.vantaca_url)}" target="_blank" class="action-btn action-btn-primary">
@@ -2312,6 +2517,144 @@
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             }).format(amount || 0);
+        }
+
+        // ============================================
+        // ACCOUNT LEDGER FUNCTIONS
+        // ============================================
+        const ledgerCache = {}; // Cache ledger data by account
+
+        async function toggleLedger(btn) {
+            const account = btn.dataset.account;
+            const containerId = 'ledger-' + account.replace(/[^a-zA-Z0-9]/g, '');
+            const container = document.getElementById(containerId);
+
+            if (!container) {
+                console.error('Ledger container not found:', containerId);
+                return;
+            }
+
+            // Toggle visibility
+            const isVisible = container.classList.contains('show');
+
+            if (isVisible) {
+                // Hide ledger
+                container.classList.remove('show');
+                btn.classList.remove('active');
+                btn.querySelector('span').textContent = 'View Account Ledger';
+            } else {
+                // Show ledger
+                container.classList.add('show');
+                btn.classList.add('active');
+                btn.querySelector('span').textContent = 'Hide Account Ledger';
+
+                // Load data if not cached
+                if (!ledgerCache[account]) {
+                    await loadLedger(account, container);
+                }
+            }
+        }
+
+        async function loadLedger(account, container) {
+            // Show loading state
+            container.innerHTML = `
+                <div class="ledger-loading">
+                    <i class="fas fa-spinner"></i> Loading ledger...
+                </div>
+            `;
+
+            try {
+                const resp = await fetch(`/api/history?account=${encodeURIComponent(account)}&limit=15`);
+                const data = await resp.json();
+
+                if (data.error) {
+                    container.innerHTML = `
+                        <div class="ledger-error">
+                            <i class="fas fa-exclamation-circle"></i> ${escapeHtml(data.error)}
+                            ${data.message ? `<br><small>${escapeHtml(data.message)}</small>` : ''}
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!data.history || data.history.length === 0) {
+                    container.innerHTML = `
+                        <div class="ledger-empty">
+                            <i class="fas fa-inbox"></i> No ledger entries found
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Cache the data
+                ledgerCache[account] = data.history;
+
+                // Render ledger table
+                renderLedgerTable(container, data.history);
+
+            } catch (e) {
+                console.error('Ledger load error:', e);
+                container.innerHTML = `
+                    <div class="ledger-error">
+                        <i class="fas fa-exclamation-circle"></i> Failed to load ledger
+                    </div>
+                `;
+            }
+        }
+
+        function renderLedgerTable(container, history) {
+            // Reverse to show oldest first (like a real ledger)
+            const sorted = [...history].reverse();
+
+            let html = `
+                <div class="ledger-header">
+                    <div class="ledger-title">
+                        <i class="fas fa-receipt"></i> Account Ledger
+                    </div>
+                    <div class="ledger-subtitle">Last ${history.length} transactions</div>
+                </div>
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Charge</th>
+                            <th>Payment</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (const entry of sorted) {
+                const chargeAmt = entry.amount > 0 ? `$${Math.abs(entry.amount).toFixed(2)}` : '';
+                const paymentAmt = entry.amount < 0 ? `$${Math.abs(entry.amount).toFixed(2)}` : '';
+
+                // Format balance
+                let balanceDisplay = entry.balance_display || `$${Math.abs(entry.running_balance).toFixed(2)}`;
+                if (entry.running_balance < 0) {
+                    balanceDisplay = `(${balanceDisplay.replace('(', '').replace(')', '')})`; // Credit in parens
+                }
+
+                // Truncate description if too long
+                const desc = entry.description || entry.type || '';
+                const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
+
+                html += `
+                    <tr title="${escapeHtml(desc)}">
+                        <td class="ledger-date">${escapeHtml(entry.date)}</td>
+                        <td class="ledger-amount charge">${chargeAmt}</td>
+                        <td class="ledger-amount payment">${paymentAmt}</td>
+                        <td class="ledger-balance">${balanceDisplay}</td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
         }
 
         function showToast(message, type = 'info') {

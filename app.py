@@ -22,6 +22,15 @@ DATAVERSE_CLIENT_ID = os.environ.get('DATAVERSE_CLIENT_ID', '7b533f6b-b4fe-4355-
 DATAVERSE_CLIENT_SECRET = os.environ.get('DATAVERSE_CLIENT_SECRET', '')
 DATAVERSE_TENANT_ID = os.environ.get('DATAVERSE_TENANT_ID', '2ddb1df5-ce39-448e-86d2-a6b2184ac8a4')
 
+# =============================================================================
+# POWER BI CONFIGURATION (for payment history)
+# =============================================================================
+PBI_CLIENT_ID = os.environ.get('PBI_CLIENT_ID', '')
+PBI_CLIENT_SECRET = os.environ.get('PBI_CLIENT_SECRET', '')
+PBI_TENANT_ID = os.environ.get('PBI_TENANT_ID', '2ddb1df5-ce39-448e-86d2-a6b2184ac8a4')
+PBI_WORKSPACE_ID = os.environ.get('PBI_WORKSPACE_ID', 'c5395f33-bd22-4d26-846f-5ad44c7ad108')
+PBI_DATASET_ID = os.environ.get('PBI_DATASET_ID', 'e17e4241-37b7-4d12-a2e8-8f4e6148ca03')
+
 # Use main homeowners table (has all fields) instead of lean copilot table
 TABLE_NAME = 'cr258_hoa_homeowners'
 COLUMNS = [
@@ -106,6 +115,137 @@ def query_dataverse(filter_expr, top=50):
 def normalize_phone(phone):
     """Strip non-digits from phone number."""
     return re.sub(r'\D', '', phone)
+
+
+# =============================================================================
+# POWER BI FUNCTIONS (for payment history)
+# =============================================================================
+_pbi_token_cache = {'token': None, 'expires': 0}
+
+
+def get_pbi_token():
+    """Get access token for Power BI API."""
+    if _pbi_token_cache['token'] and time.time() < _pbi_token_cache['expires']:
+        return _pbi_token_cache['token']
+
+    if not PBI_CLIENT_SECRET:
+        logger.warning("Power BI credentials not configured")
+        return None
+
+    try:
+        import msal
+        app_auth = msal.ConfidentialClientApplication(
+            PBI_CLIENT_ID,
+            authority=f"https://login.microsoftonline.com/{PBI_TENANT_ID}",
+            client_credential=PBI_CLIENT_SECRET
+        )
+        result = app_auth.acquire_token_for_client(
+            scopes=['https://analysis.windows.net/powerbi/api/.default']
+        )
+        if 'access_token' in result:
+            _pbi_token_cache['token'] = result['access_token']
+            _pbi_token_cache['expires'] = time.time() + 3000
+            return result['access_token']
+        else:
+            logger.error(f"PBI Token error: {result.get('error_description', 'Unknown')}")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to get Power BI token: {e}")
+        return None
+
+
+def query_pbi_dax(query):
+    """Execute DAX query against Power BI dataset."""
+    import requests
+
+    token = get_pbi_token()
+    if not token:
+        return None
+
+    url = f"https://api.powerbi.com/v1.0/myorg/groups/{PBI_WORKSPACE_ID}/datasets/{PBI_DATASET_ID}/executeQueries"
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'queries': [{'query': query}],
+        'serializerSettings': {'includeNulls': True}
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        if resp.status_code == 200:
+            return resp.json()['results'][0]['tables'][0]['rows']
+        else:
+            logger.error(f"Power BI query failed: {resp.status_code} - {resp.text[:200]}")
+            return None
+    except Exception as e:
+        logger.error(f"Power BI request failed: {e}")
+        return None
+
+
+def get_owner_id_by_account(account_number):
+    """Get OwnerID from Power BI by account number."""
+    safe_account = account_number.replace("'", "''").upper()
+    query = f"""
+    EVALUATE
+    SELECTCOLUMNS(
+        FILTER('pbi Homeowners', 'pbi Homeowners'[AccountNo] = "{safe_account}"),
+        "OwnerID", 'pbi Homeowners'[OwnerID]
+    )
+    """
+    rows = query_pbi_dax(query)
+    if rows and len(rows) > 0:
+        return rows[0].get('[OwnerID]')
+    return None
+
+
+def get_payment_history(owner_id, limit=10):
+    """Get recent payment/charge history for an owner."""
+    query = f"""
+    EVALUATE
+    TOPN({limit},
+        SELECTCOLUMNS(
+            FILTER(vOwnerLedger2, vOwnerLedger2[OwnerID] = {owner_id}),
+            "Date", vOwnerLedger2[LedgerDate],
+            "Amount", vOwnerLedger2[Amount],
+            "Type", vOwnerLedger2[TypeDescr],
+            "Description", vOwnerLedger2[Descr]
+        ),
+        [Date], DESC
+    )
+    """
+    rows = query_pbi_dax(query)
+    if not rows:
+        return []
+
+    history = []
+    for row in rows:
+        date_str = row.get('[Date]', '')
+        amount = row.get('[Amount]', 0)
+        tx_type = row.get('[Type]', '')
+        desc = row.get('[Description]', '')
+
+        # Format date
+        formatted_date = ''
+        if date_str:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                formatted_date = dt.strftime('%b %d, %Y')
+            except:
+                formatted_date = date_str[:10] if len(date_str) >= 10 else date_str
+
+        history.append({
+            'date': formatted_date,
+            'amount': amount,
+            'amount_display': f"${abs(amount):,.2f}",
+            'type': tx_type,
+            'is_payment': amount < 0,
+            'description': desc
+        })
+
+    return history
 
 
 def format_homeowner(rec):
@@ -512,6 +652,52 @@ def search_by_unit(unit_query, community_filter=None):
         'community_filter': community_filter,
         'homeowners': homeowners,
         'count': len(homeowners)
+    })
+
+
+@app.route('/api/history')
+def get_history():
+    """Get payment/charge history for an account - returns ledger-style data."""
+    account = request.args.get('account', '').strip()
+    limit = int(request.args.get('limit', 15))
+
+    if not account:
+        return jsonify({'error': 'Account number required', 'history': []}), 400
+
+    if not PBI_CLIENT_SECRET:
+        return jsonify({
+            'error': 'Power BI not configured',
+            'history': [],
+            'message': 'Payment history requires Power BI credentials'
+        }), 503
+
+    # Get OwnerID from account number
+    owner_id = get_owner_id_by_account(account)
+    if not owner_id:
+        return jsonify({
+            'error': 'Account not found in Power BI',
+            'account': account,
+            'history': []
+        }), 404
+
+    # Get payment history
+    history = get_payment_history(owner_id, limit=limit)
+
+    # Calculate running balance (most recent first, so work backwards)
+    # We'll show the ledger with oldest at top if reversed
+    running_balance = 0
+    for item in reversed(history):
+        running_balance += item['amount']
+        item['running_balance'] = round(running_balance, 2)
+        item['balance_display'] = f"${abs(running_balance):,.2f}"
+        if running_balance < 0:
+            item['balance_display'] = f"(${abs(running_balance):,.2f})"  # Credit shown in parens
+
+    return jsonify({
+        'account': account,
+        'owner_id': owner_id,
+        'history': history,
+        'count': len(history)
     })
 
 
