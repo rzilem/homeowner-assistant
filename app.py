@@ -260,9 +260,9 @@ def search():
             # Default to general search (searches name, address, AND account)
             search_type = 'general'
 
-    # Execute search
+    # Execute search - all types now support community_filter
     if search_type == 'phone':
-        return search_by_phone(query)
+        return search_by_phone(query, community_filter)
     elif search_type == 'address':
         return search_by_address(query, community_filter)
     elif search_type == 'name':
@@ -279,24 +279,32 @@ def search():
         return jsonify({'error': 'Invalid search type', 'homeowners': []}), 400
 
 
-def search_by_phone(phone):
-    """Search by phone number."""
+def search_by_phone(phone, community_filter=None):
+    """Search by phone number, with optional community filter."""
     digits = normalize_phone(phone)
     if len(digits) < 7:
         return jsonify({'error': f"Phone too short: '{phone}'", 'homeowners': [], 'count': 0}), 400
 
     last4 = digits[-4:]
-    results = query_dataverse(f"contains(cr258_primaryphone,'{last4}')", top=50)
+    filter_expr = f"contains(cr258_primaryphone,'{last4}')"
+
+    if community_filter:
+        safe_community = community_filter.replace("'", "''")
+        filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
+
+    results = query_dataverse(filter_expr, top=50)
 
     if results is None:
         return jsonify({'error': 'Dataverse connection failed', 'homeowners': []}), 503
 
+    # Further filter by full phone match
     filtered = [r for r in results if digits[-10:] in normalize_phone(r.get('cr258_primaryphone', ''))]
     homeowners = [format_homeowner(r) for r in filtered]
 
     return jsonify({
         'search_type': 'phone',
         'query': phone,
+        'community_filter': community_filter,
         'homeowners': homeowners,
         'count': len(homeowners)
     })
