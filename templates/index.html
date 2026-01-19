@@ -2080,11 +2080,10 @@
             let balanceClass = getBalanceClass(h.balance);
             if (h.balance_status === 'credit') balanceClass = 'balance-credit';
 
-            // Build phone with copy and text buttons
+            // Build phone with text button (for CT Text)
             const phoneLink = h.phone !== 'N/A'
                 ? `<span class="copyable">
                     <a href="tel:${h.phone}">${highlightText(h.phone, currentQuery)}</a>
-                    <button class="copy-btn" data-copy="${escapeHtml(h.phone)}" title="Copy phone"><i class="fas fa-copy"></i></button>
                     <button class="text-btn" data-phone="${escapeHtml(h.phone)}" title="Copy for CT Text"><i class="fas fa-sms"></i></button>
                    </span>`
                 : 'N/A';
