@@ -1026,10 +1026,11 @@
         .ledger-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             border: 1px solid var(--gray-200);
             border-radius: var(--radius-sm);
             overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         .ledger-table thead {
@@ -1063,7 +1064,8 @@
         .ledger-table td:nth-child(3),
         .ledger-table td:nth-child(4) {
             text-align: right;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
         }
 
         .ledger-table tbody tr:hover {
