@@ -200,19 +200,19 @@ def get_owner_id_by_account(account_number):
     return None
 
 
-def get_payment_history(owner_id, limit=10):
+def get_payment_history(owner_id, limit=15):
     """Get recent payment/charge history for an owner."""
+    from datetime import datetime
+
+    # Fetch more rows to ensure we get enough after sorting
     query = f"""
     EVALUATE
-    TOPN({limit},
-        SELECTCOLUMNS(
-            FILTER(vOwnerLedger2, vOwnerLedger2[OwnerID] = {owner_id}),
-            "Date", vOwnerLedger2[LedgerDate],
-            "Amount", vOwnerLedger2[Amount],
-            "Type", vOwnerLedger2[TypeDescr],
-            "Description", vOwnerLedger2[Descr]
-        ),
-        [Date], DESC
+    SELECTCOLUMNS(
+        FILTER(vOwnerLedger2, vOwnerLedger2[OwnerID] = {owner_id}),
+        "Date", vOwnerLedger2[LedgerDate],
+        "Amount", vOwnerLedger2[Amount],
+        "Type", vOwnerLedger2[TypeDescr],
+        "Description", vOwnerLedger2[Descr]
     )
     """
     rows = query_pbi_dax(query)
@@ -226,24 +226,35 @@ def get_payment_history(owner_id, limit=10):
         tx_type = row.get('[Type]', '')
         desc = row.get('[Description]', '')
 
-        # Format date
+        # Parse and format date
         formatted_date = ''
+        sort_date = None
         if date_str:
             try:
-                from datetime import datetime
                 dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
                 formatted_date = dt.strftime('%b %d, %Y')
+                sort_date = dt
             except:
                 formatted_date = date_str[:10] if len(date_str) >= 10 else date_str
+                sort_date = None
 
         history.append({
             'date': formatted_date,
+            'sort_date': sort_date,
+            'raw_date': date_str,
             'amount': amount,
             'amount_display': f"${abs(amount):,.2f}",
             'type': tx_type,
             'is_payment': amount < 0,
             'description': desc
         })
+
+    # Sort by date ascending (oldest first) for running balance calculation
+    history.sort(key=lambda x: x['sort_date'] or datetime.min)
+
+    # Take only the most recent 'limit' transactions after sorting
+    if len(history) > limit:
+        history = history[-limit:]
 
     return history
 
@@ -680,18 +691,22 @@ def get_history():
             'history': []
         }), 404
 
-    # Get payment history
+    # Get payment history (already sorted oldest to newest)
     history = get_payment_history(owner_id, limit=limit)
 
-    # Calculate running balance (most recent first, so work backwards)
-    # We'll show the ledger with oldest at top if reversed
+    # Calculate running balance from oldest to newest
     running_balance = 0
-    for item in reversed(history):
+    for item in history:
         running_balance += item['amount']
         item['running_balance'] = round(running_balance, 2)
         item['balance_display'] = f"${abs(running_balance):,.2f}"
         if running_balance < 0:
             item['balance_display'] = f"(${abs(running_balance):,.2f})"  # Credit shown in parens
+        # Remove sort_date from response (not needed by frontend)
+        item.pop('sort_date', None)
+
+    # Reverse to show newest first (most recent transactions at top)
+    history.reverse()
 
     return jsonify({
         'account': account,
