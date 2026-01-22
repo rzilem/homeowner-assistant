@@ -523,7 +523,7 @@ def search_azure_documents(query, community=None, top=10):
         "search": search_text,
         "queryType": "simple",
         "top": top,
-        "select": "metadata_spo_item_name,metadata_spo_item_path,metadata_spo_item_weburi"
+        "select": "metadata_spo_item_name,metadata_spo_item_path,metadata_spo_item_weburi,content,document_category,access_level"
     }
 
     headers = {
@@ -538,18 +538,39 @@ def search_azure_documents(query, community=None, top=10):
             data = resp.json()
             results = []
 
+            # Document category display mapping
+            CATEGORY_DISPLAY = {
+                'governing_ccr': {'icon': 'gavel', 'color': '#dc2626', 'label': 'CC&Rs'},
+                'governing_bylaws': {'icon': 'book', 'color': '#ea580c', 'label': 'Bylaws'},
+                'governing_rules': {'icon': 'list-check', 'color': '#d97706', 'label': 'Rules'},
+                'governing_arc_guidelines': {'icon': 'palette', 'color': '#ca8a04', 'label': 'ARC Guidelines'},
+                'community_minutes': {'icon': 'clipboard-list', 'color': '#16a34a', 'label': 'Minutes'},
+                'community_newsletter': {'icon': 'newspaper', 'color': '#059669', 'label': 'Newsletter'},
+                'community_announcement': {'icon': 'bullhorn', 'color': '#0d9488', 'label': 'Announcement'},
+                'board_financial': {'icon': 'chart-pie', 'color': '#0284c7', 'label': 'Financial'},
+                'board_contracts': {'icon': 'file-contract', 'color': '#2563eb', 'label': 'Contract'},
+                'board_insurance': {'icon': 'shield-halved', 'color': '#4f46e5', 'label': 'Insurance'},
+                'board_legal': {'icon': 'scale-balanced', 'color': '#7c3aed', 'label': 'Legal'},
+                'board_delinquency': {'icon': 'dollar-sign', 'color': '#9333ea', 'label': 'Delinquency'},
+                'owner_statement': {'icon': 'file-invoice', 'color': '#c026d3', 'label': 'Statement'},
+                'owner_ledger': {'icon': 'receipt', 'color': '#db2777', 'label': 'Ledger'},
+                'owner_letter': {'icon': 'envelope', 'color': '#e11d48', 'label': 'Letter'},
+                'owner_arc_submission': {'icon': 'file-pen', 'color': '#f43f5e', 'label': 'ARC Submission'},
+                'staff_violations': {'icon': 'triangle-exclamation', 'color': '#f97316', 'label': 'Violations'},
+                'staff_bids': {'icon': 'file-signature', 'color': '#84cc16', 'label': 'Bids'},
+                'staff_work_orders': {'icon': 'screwdriver-wrench', 'color': '#22c55e', 'label': 'Work Order'},
+                'staff_vendor': {'icon': 'building', 'color': '#14b8a6', 'label': 'Vendor'},
+                'staff_correspondence': {'icon': 'comments', 'color': '#06b6d4', 'label': 'Correspondence'},
+                'community_directory': {'icon': 'address-book', 'color': '#6366f1', 'label': 'Directory'},
+            }
+
             # Process search results
             for doc in data.get('value', []):
-                # Determine document type
-                doc_type = 'general'
-                doc_type_info = {'icon': 'file-alt', 'color': '#6b7280', 'label': 'Document'}
+                # Use document_category from classification (fallback to pattern matching)
+                doc_category = doc.get('document_category') or 'uncategorized'
+                doc_type_info = CATEGORY_DISPLAY.get(doc_category, {'icon': 'file-alt', 'color': '#6b7280', 'label': doc_category.replace('_', ' ').title()})
 
-                name_lower = (doc.get('metadata_spo_item_name') or '').lower()
-                for dtype, info in DOCUMENT_PATTERNS.items():
-                    if any(kw in name_lower for kw in info['keywords']):
-                        doc_type = dtype
-                        doc_type_info = info
-                        break
+                access_level = doc.get('access_level') or 'unknown'
 
                 # Extract community from path
                 path = doc.get('metadata_spo_item_path') or ''
@@ -561,8 +582,10 @@ def search_azure_documents(query, community=None, top=10):
                     'path': path,
                     'url': doc.get('metadata_spo_item_weburi', ''),
                     'community': doc_community,
-                    'doc_type': doc_type,
+                    'doc_type': doc_category,
                     'doc_type_info': doc_type_info,
+                    'access_level': access_level,
+                    'content': doc.get('content', '')[:2000] if doc.get('content') else '',  # Truncate for response
                     'score': doc.get('@search.score', 0)
                 })
 
