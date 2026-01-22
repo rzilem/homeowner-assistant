@@ -766,10 +766,13 @@ def unified_search():
     Returns structured results from both sources when appropriate.
     """
     query = request.args.get('q', '').strip()
-    mode = request.args.get('mode', 'auto')  # auto, homeowner, document, both
+    mode = request.args.get('mode', 'auto')  # auto, homeowner(s), document(s), both
 
     if not query:
         return jsonify({'error': 'Query required'}), 400
+
+    # Normalize mode - accept both singular and plural forms
+    mode = mode.rstrip('s') if mode in ['homeowners', 'documents'] else mode
 
     # Detect query type if auto mode
     if mode == 'auto':
