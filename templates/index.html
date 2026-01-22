@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homeowner Assistant | PS Property Management</title>
+    <title>Manager Wizard | PS Property Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             /* Brand Colors */
-            --primary: #0066FF;
-            --primary-dark: #0052CC;
-            --primary-light: #E6F0FF;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #e0e7ff;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+
+            /* Accent Colors */
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
 
             /* Status Colors */
             --success: #10B981;
@@ -37,17 +45,24 @@
             --gray-800: #1F2937;
             --gray-900: #111827;
 
+            /* Glass Effect */
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
             /* Shadows */
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
             --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --shadow-glow: 0 0 40px var(--primary-glow);
 
             /* Spacing */
-            --radius: 12px;
-            --radius-sm: 8px;
-            --radius-lg: 16px;
+            --radius: 16px;
+            --radius-sm: 12px;
+            --radius-lg: 24px;
+            --radius-full: 9999px;
         }
 
         * {
@@ -58,22 +73,88 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: var(--gray-800);
             line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Animated Gradient Background */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6366f1 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -2;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Floating Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--accent-cyan);
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: var(--accent-pink);
+            bottom: -50px;
+            left: -50px;
+            animation-delay: -5s;
+        }
+
+        .orb-3 {
+            width: 200px;
+            height: 200px;
+            background: var(--accent-purple);
+            top: 50%;
+            left: 30%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.9); }
+            75% { transform: translate(20px, 30px) scale(1.05); }
         }
 
         /* Header */
         .header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 1rem 2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header-content {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -83,64 +164,97 @@
         .logo {
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: white;
+            gap: 14px;
             text-decoration: none;
         }
 
         .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border-radius: 10px;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            color: #667eea;
-            font-size: 18px;
+            font-size: 24px;
+            color: white;
+            box-shadow: var(--shadow-lg), 0 0 20px var(--primary-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
         }
 
         .logo-text {
-            font-weight: 600;
-            font-size: 1.25rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-title {
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-700) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .logo-subtitle {
             font-size: 0.75rem;
-            opacity: 0.8;
-            font-weight: 400;
+            color: var(--gray-500);
+            font-weight: 500;
+            letter-spacing: 0.05em;
         }
 
         .status-indicator {
             display: flex;
             align-items: center;
-            gap: 8px;
-            color: white;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--success-light);
+            border-radius: var(--radius-full);
             font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--success);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: #10B981;
+            background: var(--success);
             animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--success);
         }
 
         .status-dot.disconnected {
-            background: #EF4444;
+            background: var(--danger);
             animation: none;
+            box-shadow: 0 0 10px var(--danger);
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
         }
 
         /* Main Container */
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
         }
@@ -148,33 +262,89 @@
         /* Hero Section */
         .hero {
             text-align: center;
-            padding: 3rem 1rem;
+            padding: 4rem 1rem 3rem;
             color: white;
         }
 
         .hero h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            animation: heroFadeIn 0.8s ease-out;
         }
 
         .hero p {
-            font-size: 1.125rem;
+            font-size: 1.25rem;
             opacity: 0.9;
-            max-width: 500px;
+            max-width: 600px;
             margin: 0 auto;
+            animation: heroFadeIn 0.8s ease-out 0.2s backwards;
+        }
+
+        @keyframes heroFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Search Container */
+        .search-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+            margin-bottom: 2rem;
+            animation: containerFadeIn 0.6s ease-out 0.3s backwards;
+        }
+
+        @keyframes containerFadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Search Mode Toggle */
+        .search-mode-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border-color: transparent;
+            color: white;
+            box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
+        }
+
+        .mode-btn i {
+            font-size: 1rem;
         }
 
         /* Search Box */
-        .search-container {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: var(--shadow-xl);
-            margin-bottom: 2rem;
-        }
-
         .search-box {
             position: relative;
             margin-bottom: 1rem;
@@ -182,18 +352,19 @@
 
         .search-input {
             width: 100%;
-            padding: 1rem 1rem 1rem 3.5rem;
+            padding: 1.25rem 1.25rem 1.25rem 4rem;
             font-size: 1.125rem;
             border: 2px solid var(--gray-200);
             border-radius: var(--radius);
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             font-family: inherit;
+            background: white;
         }
 
         .search-input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 4px var(--primary-light);
+            box-shadow: 0 0 0 4px var(--primary-light), var(--shadow-lg);
         }
 
         .search-input::placeholder {
@@ -202,343 +373,240 @@
 
         .search-icon {
             position: absolute;
-            left: 1.25rem;
+            left: 1.5rem;
             top: 50%;
             transform: translateY(-50%);
             color: var(--gray-400);
             font-size: 1.25rem;
+            transition: color 0.3s ease;
+        }
+
+        .search-input:focus + .search-icon,
+        .search-box:hover .search-icon {
+            color: var(--primary);
         }
 
         .search-btn {
             position: absolute;
-            right: 8px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.875rem 1.75rem;
             border-radius: var(--radius-sm);
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             font-family: inherit;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .search-btn:hover {
-            background: var(--primary-dark);
+            transform: translateY(-50%) scale(1.02);
+            box-shadow: var(--shadow-lg), 0 0 30px var(--primary-glow);
         }
 
         .search-btn:disabled {
             background: var(--gray-300);
             cursor: not-allowed;
+            box-shadow: none;
         }
 
-        /* Autocomplete Dropdown */
-        .autocomplete-dropdown {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
-            z-index: 100;
-            max-height: 400px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .autocomplete-dropdown.show {
-            display: block;
-        }
-
-        .autocomplete-item {
+        /* Search Hints */
+        .search-hints {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            cursor: pointer;
-            transition: background 0.15s;
-            border-bottom: 1px solid var(--gray-100);
-        }
-
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-
-        .autocomplete-item:hover,
-        .autocomplete-item.active {
-            background: var(--primary-light);
-        }
-
-        .autocomplete-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
             justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
+            margin-top: 1rem;
         }
 
-        .autocomplete-icon.person {
-            background: #E0E7FF;
-            color: #4F46E5;
-        }
-
-        .autocomplete-icon.address {
-            background: #D1FAE5;
-            color: #059669;
-        }
-
-        .autocomplete-icon.community {
-            background: #FEF3C7;
-            color: #D97706;
-        }
-
-        .autocomplete-text {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .autocomplete-main {
-            font-weight: 500;
-            color: var(--gray-800);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .autocomplete-sub {
-            font-size: 0.8125rem;
-            color: var(--gray-500);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .autocomplete-loading {
-            padding: 16px;
-            text-align: center;
-            color: var(--gray-500);
-            font-size: 0.875rem;
-        }
-
-        .autocomplete-loading i {
-            animation: spin 0.8s linear infinite;
-            margin-right: 8px;
-        }
-
-        /* Search Type Pills */
-        .search-types {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .search-types-label {
-            font-size: 0.875rem;
-            color: var(--gray-500);
-            margin-right: 0.5rem;
-        }
-
-        .type-pill {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--gray-200);
-            background: white;
-            border-radius: 100px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .type-pill:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .type-pill.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .type-pill i {
-            font-size: 0.75rem;
-        }
-
-        .delinquent-toggle {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.875rem;
+        .hint-chip {
+            padding: 6px 14px;
+            background: var(--gray-100);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
             color: var(--gray-600);
-        }
-
-        .delinquent-toggle input {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--primary);
-        }
-
-        /* Quick Actions */
-        .quick-actions {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--gray-100);
-        }
-
-        .quick-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--gray-500);
-            margin-bottom: 0.75rem;
-        }
-
-        .quick-btns {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .quick-btn {
-            padding: 0.5rem 1rem;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
 
-        .quick-btn:hover {
+        .hint-chip:hover {
             background: var(--primary-light);
+            color: var(--primary);
             border-color: var(--primary);
-            color: var(--primary);
         }
 
-        .quick-btn i {
-            color: var(--gray-400);
+        .hint-chip i {
+            margin-right: 6px;
+            opacity: 0.7;
         }
 
-        .quick-btn:hover i {
-            color: var(--primary);
-        }
-
-        .quick-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .quick-btn.active i {
-            color: white;
-        }
-
-        .active-filter {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 10px;
-            padding: 8px 12px;
-            background: var(--primary-light);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-        }
-
-        .filter-label {
-            color: var(--gray-500);
-        }
-
-        .filter-value {
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .clear-filter {
-            background: none;
-            border: none;
-            color: var(--gray-400);
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-
-        .clear-filter:hover {
-            background: var(--gray-200);
-            color: var(--gray-600);
-        }
-
-        /* Results Section */
+        /* Results Container */
         .results-container {
-            background: white;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
+            padding: 2rem;
             box-shadow: var(--shadow-xl);
-            overflow: hidden;
+            min-height: 200px;
         }
 
+        /* Results Header */
         .results-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--gray-100);
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
         }
 
         .results-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .results-count {
+            padding: 4px 12px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .detected-badge {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            color: white;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* AI Answer Card */
+        .ai-answer-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid var(--accent-cyan);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-answer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+        }
+
+        .ai-answer-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .ai-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .ai-answer-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--gray-800);
+        }
+
+        .ai-answer-subtitle {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .ai-answer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .ai-data-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .ai-data-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .ai-data-value {
+            font-size: 1rem;
             font-weight: 600;
             color: var(--gray-800);
         }
 
-        .results-count {
-            font-size: 0.875rem;
-            color: var(--gray-500);
+        .ai-summary {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--gray-300);
+            font-size: 0.95rem;
+            color: var(--gray-700);
+            line-height: 1.6;
         }
 
-        .results-summary {
-            background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
+        .ai-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 1rem;
         }
 
-        .summary-stat {
-            text-align: center;
-        }
-
-        .summary-value {
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .summary-label {
+        .ai-tag {
+            padding: 4px 10px;
+            background: white;
+            border: 1px solid var(--accent-cyan);
+            border-radius: var(--radius-full);
             font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            opacity: 0.9;
-        }
-
-        .results-grid {
-            padding: 1.5rem;
-            display: grid;
-            gap: 1rem;
+            color: var(--accent-cyan);
+            font-weight: 500;
         }
 
         /* Homeowner Card */
@@ -547,8 +615,8 @@
             border: 1px solid var(--gray-200);
             border-radius: var(--radius);
             padding: 1.5rem;
-            transition: all 0.2s;
             position: relative;
+            transition: all 0.3s ease;
             overflow: hidden;
         }
 
@@ -557,9 +625,10 @@
             position: absolute;
             left: 0;
             top: 0;
-            bottom: 0;
             width: 4px;
+            height: 100%;
             background: var(--primary);
+            transition: width 0.3s ease;
         }
 
         .homeowner-card.status-owed::before {
@@ -574,10 +643,24 @@
             background: linear-gradient(180deg, var(--danger) 0%, #991B1B 100%);
         }
 
+        .homeowner-card.status-attorney {
+            border: 2px solid #DC2626;
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+        }
+
+        .homeowner-card.status-attorney::before {
+            background: linear-gradient(180deg, #DC2626 0%, #7C2D12 100%);
+            width: 6px;
+        }
+
         .homeowner-card:hover {
             border-color: var(--gray-300);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+        }
+
+        .homeowner-card:hover::before {
+            width: 6px;
         }
 
         .card-header {
@@ -589,216 +672,14 @@
 
         .card-name {
             font-size: 1.25rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--gray-900);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
         }
 
-        .status-badge {
-            font-size: 0.625rem;
-            font-weight: 700;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .badge-collections {
-            background: var(--danger);
-            color: white;
-        }
-
-        .badge-60days {
-            background: var(--warning);
-            color: white;
-        }
-
-        .badge-30days {
-            background: var(--warning-light);
-            color: #92400E;
-        }
-
-        .badge-attorney {
-            background: #7C2D12;
-            color: white;
-            font-size: 0.75rem;
-            padding: 4px 10px;
-        }
-
-        /* Attorney Warning Card */
-        .homeowner-card.status-attorney {
-            border: 2px solid #DC2626;
-            background: #FEF2F2;
-        }
-
-        .homeowner-card.status-attorney::before {
-            background: linear-gradient(180deg, #DC2626 0%, #7C2D12 100%);
-            width: 6px;
-        }
-
-        .attorney-warning {
-            background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-            color: white;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .attorney-warning-title {
-            font-size: 1rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .attorney-warning-text {
+        .card-community {
             font-size: 0.875rem;
-            opacity: 0.95;
-            margin-bottom: 12px;
-        }
-
-        .attorney-contact {
-            background: rgba(255,255,255,0.15);
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 12px;
-        }
-
-        .attorney-name {
-            font-weight: 600;
-            font-size: 0.9375rem;
-        }
-
-        .attorney-phone {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        .attorney-phone a {
-            color: white;
-            text-decoration: none;
-        }
-
-        .attorney-phone a:hover {
-            text-decoration: underline;
-        }
-
-        /* Enhanced Card Sections */
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 8px;
-        }
-
-        .tag-badge {
-            font-size: 0.6875rem;
-            padding: 3px 8px;
-            border-radius: 100px;
-            background: var(--gray-100);
-            color: var(--gray-600);
-            font-weight: 500;
-        }
-
-        .tag-badge.tenant {
-            background: #DBEAFE;
-            color: #1D4ED8;
-        }
-
-        .tag-badge.collections-provider {
-            background: #FEE2E2;
-            color: #991B1B;
-        }
-
-        .card-financial {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid var(--gray-100);
-        }
-
-        .financial-item {
-            background: var(--gray-50);
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .financial-value {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-
-        .financial-value.positive {
-            color: var(--success);
-        }
-
-        .financial-value.negative {
-            color: var(--danger);
-        }
-
-        .financial-label {
-            font-size: 0.6875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--gray-500);
-            margin-top: 2px;
-        }
-
-        .card-extra {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed var(--gray-200);
-        }
-
-        .extra-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.8125rem;
-            color: var(--gray-600);
-            margin-bottom: 6px;
-        }
-
-        .extra-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .extra-row i {
-            width: 16px;
-            color: var(--gray-400);
-        }
-
-        .extra-label {
-            font-weight: 500;
-            color: var(--gray-500);
-        }
-
-        .all-contacts {
-            font-size: 0.75rem;
             color: var(--gray-500);
             margin-top: 4px;
-            padding-left: 40px;
-        }
-
-        .all-contacts a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .all-contacts a:hover {
-            text-decoration: underline;
         }
 
         .card-balance {
@@ -810,17 +691,12 @@
             font-weight: 700;
         }
 
-        .balance-owed {
-            color: var(--danger);
-        }
-
-        .balance-credit {
-            color: var(--success);
-        }
-
-        .balance-current {
-            color: var(--gray-500);
-        }
+        .balance-amount.balance-owed { color: var(--danger); }
+        .balance-amount.balance-credit { color: var(--success); }
+        .balance-amount.balance-current { color: var(--gray-400); }
+        .balance-amount.balance-high { color: #991B1B; }
+        .balance-amount.balance-medium { color: var(--danger); }
+        .balance-amount.balance-low { color: var(--warning); }
 
         .balance-label {
             font-size: 0.75rem;
@@ -829,9 +705,98 @@
             letter-spacing: 0.05em;
         }
 
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-attorney {
+            background: #DC2626;
+            color: white;
+        }
+
+        .badge-collections {
+            background: #991B1B;
+            color: white;
+        }
+
+        .badge-60days {
+            background: var(--danger);
+            color: white;
+        }
+
+        .badge-30days {
+            background: var(--warning);
+            color: white;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .tag-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: var(--gray-100);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            color: var(--gray-600);
+        }
+
+        .tag-badge.tenant {
+            background: var(--info-light);
+            color: var(--info);
+        }
+
+        .tag-badge.collections-provider {
+            background: var(--danger-light);
+            color: #991B1B;
+        }
+
+        .card-financial {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+        }
+
+        .financial-item {
+            text-align: center;
+        }
+
+        .financial-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .financial-value.positive { color: var(--success); }
+        .financial-value.negative { color: var(--danger); }
+
+        .financial-label {
+            font-size: 0.7rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
+
         .card-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
             margin-bottom: 1rem;
         }
@@ -839,35 +804,35 @@
         .detail-item {
             display: flex;
             align-items: flex-start;
-            gap: 0.75rem;
+            gap: 10px;
         }
 
         .detail-icon {
             width: 32px;
             height: 32px;
-            border-radius: 8px;
             background: var(--gray-100);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--gray-500);
-            font-size: 0.875rem;
             flex-shrink: 0;
         }
 
         .detail-content {
+            flex: 1;
             min-width: 0;
         }
 
         .detail-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--gray-500);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
         .detail-value {
-            font-weight: 500;
+            font-size: 0.9rem;
             color: var(--gray-800);
             word-break: break-word;
         }
@@ -881,452 +846,445 @@
             text-decoration: underline;
         }
 
-        /* Email - wrap long addresses gracefully */
-        .detail-value.email-value {
-            word-break: break-all;
-            white-space: normal;
-            overflow-wrap: break-word;
-            max-width: 100%;
-            font-size: 0.9rem;
-        }
-
-        .detail-value.email-value a {
-            word-break: break-all;
-        }
-
-        /* Last synced footer */
-        .card-sync-info {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 0.375rem;
-            padding-top: 0.75rem;
-            margin-top: 0.5rem;
-            border-top: 1px dashed var(--gray-200);
-            font-size: 0.7rem;
-            color: var(--gray-400);
-        }
-
-        .card-sync-info i {
-            font-size: 0.65rem;
-        }
-
-        .card-sync-info:hover {
-            color: var(--gray-500);
-        }
-
         .card-actions {
             display: flex;
             gap: 0.75rem;
             padding-top: 1rem;
-            border-top: 1px solid var(--gray-100);
+            border-top: 1px solid var(--gray-200);
         }
 
-        .action-btn {
-            padding: 0.625rem 1rem;
+        .btn {
+            padding: 10px 18px;
             border-radius: var(--radius-sm);
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             font-family: inherit;
             border: none;
+            text-decoration: none;
         }
 
-        .action-btn-primary {
-            background: var(--primary);
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
             color: white;
         }
 
-        .action-btn-primary:hover {
-            background: var(--primary-dark);
+        .btn-primary:hover {
+            box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
+            transform: translateY(-2px);
         }
 
-        .action-btn-secondary {
+        .btn-secondary {
             background: var(--gray-100);
             color: var(--gray-700);
         }
 
-        .action-btn-secondary:hover {
+        .btn-secondary:hover {
             background: var(--gray-200);
         }
 
-        /* ============================================
-           ACCOUNT LEDGER STYLES
-           ============================================ */
-        .ledger-section {
-            margin-top: 1rem;
-            border-top: 1px solid var(--gray-200);
-            padding-top: 1rem;
+        /* Document Card */
+        .document-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+            overflow: hidden;
         }
 
-        .ledger-toggle {
+        .document-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--doc-color, #0078d4);
+            transition: width 0.3s ease;
+        }
+
+        .document-card:hover {
+            border-color: var(--gray-300);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+        }
+
+        .document-card:hover::before {
+            width: 6px;
+        }
+
+        .doc-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 1rem;
+        }
+
+        .doc-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
-            color: var(--gray-700);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            width: 100%;
             justify-content: center;
+            font-size: 20px;
+            color: white;
+            flex-shrink: 0;
+            background: var(--doc-color, #0078d4);
         }
 
-        .ledger-toggle:hover {
+        .doc-title-section {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .doc-type-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--doc-color, #0078d4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .doc-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            line-height: 1.3;
+        }
+
+        .doc-community {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
             background: var(--gray-100);
-            border-color: var(--gray-300);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-top: 8px;
         }
 
-        .ledger-toggle.active {
-            background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .ledger-toggle i {
-            transition: transform 0.2s;
-        }
-
-        .ledger-toggle.active i.fa-chevron-down {
-            transform: rotate(180deg);
-        }
-
-        .ledger-container {
-            display: none;
-            margin-top: 1rem;
+        .doc-snippet {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            animation: slideDown 0.3s ease-out;
         }
 
-        .ledger-container.show {
-            display: block;
+        .doc-snippet mark {
+            background: var(--warning-light);
+            padding: 0 2px;
+            border-radius: 2px;
         }
 
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                max-height: 0;
-            }
-            to {
-                opacity: 1;
-                max-height: 1000px;
-            }
+        .doc-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-bottom: 1rem;
         }
 
-        .ledger-header {
+        .doc-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        /* Attorney Warning */
+        .attorney-warning {
+            background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+        }
+
+        .attorney-warning-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .attorney-warning-text {
+            font-size: 0.85rem;
+            opacity: 0.95;
+            line-height: 1.5;
+        }
+
+        .attorney-contact {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
         }
 
-        .ledger-title {
+        .attorney-name {
             font-weight: 600;
-            color: var(--gray-800);
-            font-size: 0.95rem;
         }
 
-        .ledger-subtitle {
-            font-size: 0.75rem;
-            color: var(--gray-500);
+        .attorney-phone a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .ledger-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        .attorney-phone a:hover {
+            text-decoration: underline;
         }
 
-        .ledger-table thead {
-            background: var(--gray-100);
-        }
-
-        .ledger-table th {
-            padding: 0.5rem 0.75rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--gray-700);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--gray-200);
-        }
-
-        .ledger-table th:nth-child(2),
-        .ledger-table th:nth-child(3),
-        .ledger-table th:nth-child(4) {
-            text-align: right;
-        }
-
-        .ledger-table td {
-            padding: 0.5rem 0.75rem;
-            border-bottom: 1px solid var(--gray-100);
-            color: var(--gray-700);
-        }
-
-        .ledger-table td:nth-child(2),
-        .ledger-table td:nth-child(3),
-        .ledger-table td:nth-child(4) {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-            font-weight: 500;
-        }
-
-        .ledger-table tbody tr:hover {
-            background: var(--gray-50);
-        }
-
-        .ledger-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .ledger-date {
-            white-space: nowrap;
-        }
-
-        .ledger-desc {
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .ledger-amount {
-            font-weight: 500;
-        }
-
-        .ledger-amount.charge {
-            color: var(--danger);
-        }
-
-        .ledger-amount.payment {
-            color: var(--success);
-        }
-
-        .ledger-balance {
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-
-        .ledger-loading {
-            padding: 2rem;
-            text-align: center;
-            color: var(--gray-500);
-        }
-
-        .ledger-loading i {
-            animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
-        }
-
-        .ledger-empty {
-            padding: 1.5rem;
-            text-align: center;
-            color: var(--gray-500);
-            font-size: 0.875rem;
-        }
-
-        .ledger-error {
-            padding: 1rem;
-            text-align: center;
-            color: var(--danger);
-            background: var(--danger-light);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-        }
-
-        /* Loading State */
-        .loading {
+        /* Loading States */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             padding: 4rem 2rem;
-            text-align: center;
+            color: var(--gray-500);
         }
 
         .loading-spinner {
             width: 48px;
             height: 48px;
-            border: 3px solid var(--gray-200);
+            border: 4px solid var(--gray-200);
             border-top-color: var(--primary);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 1rem;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .loading-text {
-            color: var(--gray-500);
-            font-size: 1rem;
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            height: 280px;
+            border-radius: var(--radius);
         }
 
         /* Empty State */
         .empty-state {
-            padding: 4rem 2rem;
             text-align: center;
-        }
-
-        .empty-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: var(--gray-100);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            color: var(--gray-400);
-            font-size: 1.5rem;
-        }
-
-        .empty-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--gray-800);
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-text {
+            padding: 4rem 2rem;
             color: var(--gray-500);
         }
 
-        /* Welcome State */
-        .welcome-state {
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .welcome-icon {
+        .empty-state-icon {
             width: 80px;
             height: 80px;
+            background: var(--gray-100);
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-light) 0%, #E0E7FF 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 1.5rem;
-            color: var(--primary);
             font-size: 2rem;
+            color: var(--gray-400);
         }
 
-        .welcome-title {
+        .empty-state h3 {
             font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--gray-800);
+            color: var(--gray-700);
             margin-bottom: 0.5rem;
         }
 
-        .welcome-text {
-            color: var(--gray-500);
+        .empty-state p {
+            font-size: 0.95rem;
             max-width: 400px;
-            margin: 0 auto 2rem;
+            margin: 0 auto;
         }
 
-        .welcome-examples {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            justify-content: center;
+        /* Results Sections */
+        .results-section {
+            margin-bottom: 2rem;
         }
 
-        .example-chip {
-            padding: 0.5rem 1rem;
-            background: var(--gray-100);
-            border-radius: 100px;
-            font-size: 0.875rem;
-            color: var(--gray-600);
-            cursor: pointer;
-            transition: all 0.2s;
+        .results-section:last-child {
+            margin-bottom: 0;
         }
 
-        .example-chip:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--gray-800);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
+        .section-header {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
+            gap: 12px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--gray-100);
         }
 
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
+        .section-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
         }
 
-        .toast.success {
-            background: var(--success);
+        .section-icon.homeowner { background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%); }
+        .section-icon.document { background: linear-gradient(135deg, var(--accent-cyan) 0%, #0078d4 100%); }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-800);
         }
 
-        .toast.error {
-            background: var(--danger);
+        .section-count {
+            padding: 2px 10px;
+            background: var(--gray-100);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+
+        /* Card Animations */
+        .homeowner-card, .document-card {
+            animation: cardFadeIn 0.4s ease-out backwards;
+        }
+
+        .results-grid > *:nth-child(1) { animation-delay: 0.05s; }
+        .results-grid > *:nth-child(2) { animation-delay: 0.1s; }
+        .results-grid > *:nth-child(3) { animation-delay: 0.15s; }
+        .results-grid > *:nth-child(4) { animation-delay: 0.2s; }
+        .results-grid > *:nth-child(5) { animation-delay: 0.25s; }
+        .results-grid > *:nth-child(6) { animation-delay: 0.3s; }
+
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .quick-action-btn {
+            padding: 10px 18px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .quick-action-btn i {
+            font-size: 1rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.875rem;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
             .hero h1 {
-                font-size: 1.75rem;
+                font-size: 2rem;
             }
 
-            .search-container {
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .search-container,
+            .results-container {
                 padding: 1.5rem;
             }
 
-            .search-input {
-                font-size: 1rem;
-                padding-right: 1rem;
+            .search-mode-toggle {
+                flex-wrap: wrap;
             }
 
-            .search-btn {
-                position: static;
-                transform: none;
-                width: 100%;
-                margin-top: 0.75rem;
+            .mode-btn {
+                flex: 1;
                 justify-content: center;
+                min-width: 100px;
             }
 
-            .search-types {
-                justify-content: center;
-            }
-
-            .delinquent-toggle {
-                margin-left: 0;
-                margin-top: 0.5rem;
-                width: 100%;
-                justify-content: center;
+            .results-grid {
+                grid-template-columns: 1fr;
             }
 
             .card-header {
@@ -1342,226 +1300,28 @@
                 grid-template-columns: 1fr;
             }
 
-            .card-actions {
-                flex-direction: column;
+            .card-financial {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
 
-            .action-btn {
-                justify-content: center;
+            .search-btn span {
+                display: none;
             }
-        }
 
-        /* ============================================
-           ENHANCEMENTS
-           ============================================ */
-
-        /* Dark Mode */
-        body.dark-mode {
-            --gray-50: #1F2937;
-            --gray-100: #374151;
-            --gray-200: #4B5563;
-            --gray-300: #6B7280;
-            --gray-400: #9CA3AF;
-            --gray-500: #D1D5DB;
-            --gray-600: #E5E7EB;
-            --gray-700: #F3F4F6;
-            --gray-800: #F9FAFB;
-            --gray-900: #FFFFFF;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        }
-
-        body.dark-mode .search-container,
-        body.dark-mode .results-container,
-        body.dark-mode .homeowner-card,
-        body.dark-mode .autocomplete-dropdown {
-            background: var(--gray-50);
-            color: var(--gray-800);
-        }
-
-        body.dark-mode .search-input {
-            background: var(--gray-100);
-            border-color: var(--gray-200);
-            color: var(--gray-800);
-        }
-
-        body.dark-mode .type-pill,
-        body.dark-mode .quick-btn {
-            background: var(--gray-100);
-            border-color: var(--gray-200);
-            color: var(--gray-500);
-        }
-
-        .dark-toggle {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        .dark-toggle:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        /* Loading Skeleton */
-        .skeleton-container {
-            padding: 1rem;
-        }
-
-        .skeleton-card {
-            background: white;
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            animation: skeleton-pulse 1.5s ease-in-out infinite;
-        }
-
-        body.dark-mode .skeleton-card {
-            background: var(--gray-100);
-        }
-
-        .skeleton-line {
-            background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
-            background-size: 200% 100%;
-            animation: skeleton-shimmer 1.5s infinite;
-            border-radius: 4px;
-            height: 16px;
-            margin-bottom: 12px;
-        }
-
-        .skeleton-line.short { width: 40%; }
-        .skeleton-line.medium { width: 70%; }
-        .skeleton-line.long { width: 90%; }
-
-        .skeleton-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-        }
-
-        .skeleton-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: var(--gray-200);
-        }
-
-        @keyframes skeleton-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        @keyframes skeleton-shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        /* Card Animations */
-        .homeowner-card {
-            animation: cardFadeIn 0.3s ease-out;
-            animation-fill-mode: both;
-        }
-
-        .results-grid .homeowner-card:nth-child(1) { animation-delay: 0.05s; }
-        .results-grid .homeowner-card:nth-child(2) { animation-delay: 0.1s; }
-        .results-grid .homeowner-card:nth-child(3) { animation-delay: 0.15s; }
-        .results-grid .homeowner-card:nth-child(4) { animation-delay: 0.2s; }
-        .results-grid .homeowner-card:nth-child(5) { animation-delay: 0.25s; }
-
-        @keyframes cardFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .search-hints {
+                display: none;
             }
         }
 
-        /* Highlight Search Match */
-        .highlight {
-            background: #FEF08A;
-            padding: 0 2px;
-            border-radius: 2px;
-            font-weight: 500;
-        }
-
-        body.dark-mode .highlight {
-            background: #854d0e;
-            color: #fef08a;
-        }
-
-        /* Balance Color Intensity */
-        .balance-owed-low { color: #F59E0B; }
-        .balance-owed-medium { color: #EA580C; }
-        .balance-owed-high { color: #DC2626; }
-        .balance-owed-critical { color: #991B1B; font-weight: 700; }
-
-        /* Copy Button Tooltip */
-        .copy-btn {
-            background: none;
-            border: none;
-            color: var(--gray-400);
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .copy-btn:hover {
-            background: var(--gray-100);
-            color: var(--primary);
-        }
-
-        .copy-btn.copied {
-            color: var(--success);
-        }
-
-        .copy-btn.copied::after {
-            content: 'Copied!';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--gray-800);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            white-space: nowrap;
-            animation: tooltipFade 1s forwards;
-        }
-
-        @keyframes tooltipFade {
-            0%, 70% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        /* Copyable Value */
+        /* Copy Button */
         .copyable {
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
-        .copyable .copy-btn,
-        .copyable .text-btn {
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .copyable:hover .copy-btn,
-        .copyable:hover .text-btn {
-            opacity: 1;
-        }
-
-        /* Text Button (CT Text) */
-        .text-btn {
+        .copy-btn, .text-btn {
             background: none;
             border: none;
             color: var(--gray-400);
@@ -1569,591 +1329,271 @@
             padding: 4px;
             border-radius: 4px;
             transition: all 0.2s;
-            position: relative;
         }
 
-        .text-btn:hover {
-            background: #DBEAFE;
-            color: #1D4ED8;
-        }
-
-        .text-btn.copied::after {
-            content: 'Copied for CT Text!';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1D4ED8;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            white-space: nowrap;
-            animation: tooltipFade 1.5s forwards;
-        }
-
-        /* Recent Searches */
-        .recent-searches {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--gray-100);
-        }
-
-        .recent-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--gray-400);
-            margin-bottom: 8px;
-        }
-
-        .recent-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .recent-item {
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .recent-item:hover {
+        .copy-btn:hover, .text-btn:hover {
+            color: var(--primary);
             background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .recent-item i {
-            font-size: 10px;
-            color: var(--gray-400);
-        }
-
-        /* Expand/Collapse Card */
-        .card-expand-btn {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 12px;
-            cursor: pointer;
-            padding: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: all 0.2s;
-        }
-
-        .card-expand-btn:hover {
-            color: var(--primary-dark);
-        }
-
-        .card-expand-btn i {
-            transition: transform 0.2s;
-        }
-
-        .card-expand-btn.expanded i {
-            transform: rotate(180deg);
-        }
-
-        .card-expandable {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-
-        .card-expandable.expanded {
-            max-height: 500px;
-        }
-
-        /* Print Button */
-        .print-btn {
-            background: var(--gray-100);
-            border: 1px solid var(--gray-200);
-            color: var(--gray-600);
-            padding: 6px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-
-        .print-btn:hover {
-            background: var(--gray-200);
-        }
-
-        /* Print Styles */
-        @media print {
-            body {
-                background: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .header, .search-container, .quick-actions,
-            .card-actions, .print-btn, .dark-toggle,
-            .recent-searches, .active-filter {
-                display: none !important;
-            }
-
-            .results-container {
-                box-shadow: none !important;
-            }
-
-            .homeowner-card {
-                break-inside: avoid;
-                page-break-inside: avoid;
-                border: 1px solid #ccc !important;
-                margin-bottom: 1rem;
-            }
-
-            .results-grid {
-                display: block !important;
-            }
-        }
-
-        /* No Results Suggestions */
-        .suggestions-box {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: var(--info-light);
-            border-radius: var(--radius-sm);
-            border-left: 3px solid var(--info);
-        }
-
-        .suggestions-title {
-            font-weight: 600;
-            color: var(--info);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .suggestions-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .suggestion-chip {
-            background: white;
-            border: 1px solid var(--info);
-            color: var(--info);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .suggestion-chip:hover {
-            background: var(--info);
-            color: white;
         }
     </style>
 </head>
 <body>
+    <!-- Background -->
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-content">
             <a href="/" class="logo">
-                <div class="logo-icon">PS</div>
-                <div>
-                    <div class="logo-text">Homeowner Assistant</div>
-                    <div class="logo-subtitle">PS Property Management</div>
+                <div class="logo-icon">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">Manager Wizard</span>
+                    <span class="logo-subtitle">PS PROPERTY MANAGEMENT</span>
                 </div>
             </a>
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="status-indicator" id="statusIndicator">
-                    <span class="status-dot"></span>
-                    <span>Connecting...</span>
-                </div>
-                <button class="dark-toggle" id="darkToggle" title="Toggle dark mode">
-                    <i class="fas fa-moon"></i>
-                </button>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span id="statusText">Connected</span>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="container">
+    <div class="container">
         <!-- Hero -->
-        <div class="hero">
-            <h1>Find Any Homeowner Instantly</h1>
-            <p>Search 23,752+ homeowner records by phone, address, account, or community</p>
-        </div>
+        <section class="hero">
+            <h1>Ask me anything</h1>
+            <p>Search homeowners by phone, address, or name. Ask questions about community rules and policies.</p>
+        </section>
 
-        <!-- Search Box -->
+        <!-- Search Container -->
         <div class="search-container">
+            <!-- Mode Toggle -->
+            <div class="search-mode-toggle">
+                <button class="mode-btn active" data-mode="auto">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>Auto-detect</span>
+                </button>
+                <button class="mode-btn" data-mode="homeowner">
+                    <i class="fas fa-user"></i>
+                    <span>Homeowners</span>
+                </button>
+                <button class="mode-btn" data-mode="document">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Documents</span>
+                </button>
+                <button class="mode-btn" data-mode="both">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Both</span>
+                </button>
+            </div>
+
+            <!-- Search Box -->
             <div class="search-box">
-                <i class="fas fa-search search-icon"></i>
                 <input type="text"
-                       id="searchInput"
                        class="search-input"
-                       placeholder="Enter phone, address, account #, or community..."
+                       id="searchInput"
+                       placeholder="Search by phone, address, name, or ask a question..."
                        autocomplete="off">
+                <i class="fas fa-search search-icon"></i>
                 <button class="search-btn" id="searchBtn">
-                    <i class="fas fa-arrow-right"></i> Search
+                    <i class="fas fa-arrow-right"></i>
+                    <span>Search</span>
                 </button>
-                <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
             </div>
 
-            <div class="search-types">
-                <span class="search-types-label">Search by:</span>
-                <button class="type-pill active" data-type="auto">
-                    <i class="fas fa-magic"></i> Auto
-                </button>
-                <button class="type-pill" data-type="name">
-                    <i class="fas fa-user"></i> Name
-                </button>
-                <button class="type-pill" data-type="phone">
-                    <i class="fas fa-phone"></i> Phone
-                </button>
-                <button class="type-pill" data-type="address">
-                    <i class="fas fa-map-marker-alt"></i> Address
-                </button>
-                <button class="type-pill" data-type="account">
-                    <i class="fas fa-hashtag"></i> Account
-                </button>
-                <button class="type-pill" data-type="unit">
-                    <i class="fas fa-door-open"></i> Unit/Lot
-                </button>
-                <button class="type-pill" data-type="community">
-                    <i class="fas fa-building"></i> Community
-                </button>
-
-                <label class="delinquent-toggle" id="delinquentToggle" style="display: none;">
-                    <input type="checkbox" id="delinquentOnly">
-                    <span>Delinquent only</span>
-                </label>
+            <!-- Search Hints -->
+            <div class="search-hints">
+                <span class="hint-chip" data-query="512-555-1234"><i class="fas fa-phone"></i>Phone</span>
+                <span class="hint-chip" data-query="7016 Walkup Lane"><i class="fas fa-map-marker-alt"></i>Address</span>
+                <span class="hint-chip" data-query="fence height Falcon Pointe"><i class="fas fa-border-all"></i>Fence Rules</span>
+                <span class="hint-chip" data-query="pool rules Vista Vera"><i class="fas fa-swimming-pool"></i>Pool Rules</span>
+                <span class="hint-chip" data-query="parking policy"><i class="fas fa-car"></i>Parking</span>
+                <span class="hint-chip" data-query="pet restrictions"><i class="fas fa-paw"></i>Pets</span>
             </div>
 
+            <!-- Quick Actions -->
             <div class="quick-actions">
-                <div class="quick-label">Filter by community</div>
-                <div class="quick-btns">
-                    <button class="quick-btn community-filter" data-community="Falcon Pointe">
-                        <i class="fas fa-building"></i> Falcon Pointe
-                    </button>
-                    <button class="quick-btn community-filter" data-community="Avalon">
-                        <i class="fas fa-building"></i> Avalon
-                    </button>
-                    <button class="quick-btn community-filter" data-community="Chandler Creek">
-                        <i class="fas fa-building"></i> Chandler Creek
-                    </button>
-                    <button class="quick-btn community-filter" data-community="Heritage Park">
-                        <i class="fas fa-building"></i> Heritage Park
-                    </button>
-                    <button class="quick-btn community-filter" data-community="Vista Vera">
-                        <i class="fas fa-building"></i> Vista Vera
-                    </button>
-                </div>
-                <div class="active-filter" id="activeFilter" style="display: none;">
-                    <span class="filter-label">Filtering:</span>
-                    <span class="filter-value" id="filterValue"></span>
-                    <button class="clear-filter" id="clearFilter" title="Clear filter">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+                <button class="quick-action-btn" data-community="Falcon Pointe">
+                    <i class="fas fa-building"></i> Falcon Pointe
+                </button>
+                <button class="quick-action-btn" data-community="Avalon">
+                    <i class="fas fa-building"></i> Avalon
+                </button>
+                <button class="quick-action-btn" data-community="Chandler Creek">
+                    <i class="fas fa-building"></i> Chandler Creek
+                </button>
+                <button class="quick-action-btn" data-community="Heritage Park">
+                    <i class="fas fa-building"></i> Heritage Park
+                </button>
+                <button class="quick-action-btn" data-community="Vista Vera">
+                    <i class="fas fa-building"></i> Vista Vera
+                </button>
             </div>
         </div>
 
-        <!-- Results -->
-        <div class="results-container" id="resultsContainer">
-            <div class="welcome-state" id="welcomeState">
-                <div class="welcome-icon">
-                    <i class="fas fa-user-friends"></i>
-                </div>
-                <h2 class="welcome-title">Ready to help</h2>
-                <p class="welcome-text">
-                    Search for homeowners using any information you have - phone number,
-                    address, name, account number, or community name.
-                </p>
-                <div class="welcome-examples">
-                    <span class="example-chip" data-query="512-461-7612">512-461-7612</span>
-                    <span class="example-chip" data-query="1902 Cistern">1902 Cistern</span>
-                    <span class="example-chip" data-query="FAL51515">FAL51515</span>
-                </div>
-                <div class="recent-searches" id="recentSearches" style="display: none;">
-                    <div class="recent-label">Recent Searches</div>
-                    <div class="recent-items" id="recentItems"></div>
-                </div>
-            </div>
-
-            <div class="loading" id="loadingState" style="display: none;">
-                <div class="skeleton-container">
-                    <div class="skeleton-card">
-                        <div class="skeleton-header">
-                            <div class="skeleton-line medium"></div>
-                            <div class="skeleton-line short"></div>
-                        </div>
-                        <div class="skeleton-line long"></div>
-                        <div class="skeleton-line medium"></div>
-                        <div class="skeleton-line short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-header">
-                            <div class="skeleton-line medium"></div>
-                            <div class="skeleton-line short"></div>
-                        </div>
-                        <div class="skeleton-line long"></div>
-                        <div class="skeleton-line medium"></div>
-                        <div class="skeleton-line short"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="resultsContent" style="display: none;"></div>
+        <!-- Results Container -->
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <div id="resultsContent"></div>
         </div>
-    </main>
+    </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
+    <!-- Footer -->
+    <footer class="footer">
+        <p>PS Property Management • Serving Central Texas communities since 1987 • <a href="tel:512-251-6122">512-251-6122</a></p>
+    </footer>
 
     <script>
         // State
-        let currentSearchType = 'auto';
-        let isLoading = false;
-        let suggestDebounceTimer = null;
-        let activeAutocompleteIndex = -1;
-        let communityFilter = null;  // Active community filter
-        let currentQuery = '';  // For highlighting
-        const defaultTitle = document.title;
+        let currentMode = 'auto';
+        let isSearching = false;
 
-        // DOM Elements
+        // Elements
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
-        const typePills = document.querySelectorAll('.type-pill');
-        const communityFilterBtns = document.querySelectorAll('.community-filter');
-        const exampleChips = document.querySelectorAll('.example-chip');
-        const delinquentToggle = document.getElementById('delinquentToggle');
-        const delinquentCheckbox = document.getElementById('delinquentOnly');
-        const welcomeState = document.getElementById('welcomeState');
-        const loadingState = document.getElementById('loadingState');
+        const resultsContainer = document.getElementById('resultsContainer');
         const resultsContent = document.getElementById('resultsContent');
         const statusIndicator = document.getElementById('statusIndicator');
-        const toast = document.getElementById('toast');
-        const autocompleteDropdown = document.getElementById('autocompleteDropdown');
-        const activeFilterEl = document.getElementById('activeFilter');
-        const filterValueEl = document.getElementById('filterValue');
-        const clearFilterBtn = document.getElementById('clearFilter');
-        const darkToggle = document.getElementById('darkToggle');
-        const recentSearchesEl = document.getElementById('recentSearches');
-        const recentItemsEl = document.getElementById('recentItems');
+        const statusText = document.getElementById('statusText');
 
-        // ============================================
-        // RECENT SEARCHES (localStorage)
-        // ============================================
-        const RECENT_KEY = 'homeowner_recent_searches';
-        const MAX_RECENT = 5;
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            setupEventListeners();
+        });
 
-        function getRecentSearches() {
-            try {
-                return JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
-            } catch {
-                return [];
-            }
-        }
+        function setupEventListeners() {
+            // Mode toggle
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMode = btn.dataset.mode;
+                    updatePlaceholder();
+                });
+            });
 
-        function saveRecentSearch(query) {
-            if (!query || query.length < 2) return;
-            let recent = getRecentSearches();
-            // Remove if exists, add to front
-            recent = recent.filter(q => q.toLowerCase() !== query.toLowerCase());
-            recent.unshift(query);
-            // Keep only MAX_RECENT
-            recent = recent.slice(0, MAX_RECENT);
-            localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
-            renderRecentSearches();
-        }
+            // Search
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
 
-        function renderRecentSearches() {
-            const recent = getRecentSearches();
-            if (recent.length === 0) {
-                recentSearchesEl.style.display = 'none';
-                return;
-            }
-            recentSearchesEl.style.display = 'block';
-            recentItemsEl.innerHTML = recent.map(q =>
-                `<span class="recent-item" data-query="${escapeHtml(q)}">
-                    <i class="fas fa-history"></i> ${escapeHtml(q)}
-                </span>`
-            ).join('');
+            // Hint chips
+            document.querySelectorAll('.hint-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    searchInput.value = chip.dataset.query;
+                    performSearch();
+                });
+            });
 
-            // Attach click handlers
-            recentItemsEl.querySelectorAll('.recent-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    searchInput.value = item.dataset.query;
-                    search(item.dataset.query);
+            // Quick action buttons
+            document.querySelectorAll('.quick-action-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    searchInput.value = btn.dataset.community;
+                    currentMode = 'homeowner';
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelector('.mode-btn[data-mode="homeowner"]').classList.add('active');
+                    performSearch();
                 });
             });
         }
 
-        // ============================================
-        // DARK MODE
-        // ============================================
-        const DARK_KEY = 'homeowner_dark_mode';
-
-        function initDarkMode() {
-            const isDark = localStorage.getItem(DARK_KEY) === 'true';
-            if (isDark) {
-                document.body.classList.add('dark-mode');
-                darkToggle.innerHTML = '<i class="fas fa-sun"></i>';
-            }
+        function updatePlaceholder() {
+            const placeholders = {
+                'auto': 'Search by phone, address, name, or ask a question...',
+                'homeowner': 'Search homeowners by phone, address, or name...',
+                'document': 'Ask about community rules and policies...',
+                'both': 'Search everything...'
+            };
+            searchInput.placeholder = placeholders[currentMode] || placeholders['auto'];
         }
 
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem(DARK_KEY, isDark);
-            darkToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-        }
-
-        // ============================================
-        // HIGHLIGHT SEARCH TERM
-        // ============================================
-        function highlightText(text, query) {
-            if (!query || !text) return escapeHtml(text);
-            const escaped = escapeHtml(text);
-            const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-            return escaped.replace(regex, '<span class="highlight">$1</span>');
-        }
-
-        function escapeRegex(str) {
-            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-
-        // ============================================
-        // BALANCE INTENSITY
-        // ============================================
-        function getBalanceClass(balance) {
-            if (balance <= 0) return 'balance-current';
-            if (balance < 100) return 'balance-owed-low';
-            if (balance < 500) return 'balance-owed-medium';
-            if (balance < 1000) return 'balance-owed-high';
-            return 'balance-owed-critical';
-        }
-
-        // ============================================
-        // COPY TO CLIPBOARD
-        // ============================================
-        function copyToClipboard(text, btn) {
-            navigator.clipboard.writeText(text).then(() => {
-                btn.classList.add('copied');
-                setTimeout(() => btn.classList.remove('copied'), 1000);
-            });
-        }
-
-        // Check API status on load
         async function checkStatus() {
             try {
                 const resp = await fetch('/api/status');
                 const data = await resp.json();
-                const dot = statusIndicator.querySelector('.status-dot');
-                const text = statusIndicator.querySelector('span:last-child');
 
                 if (data.status === 'connected') {
-                    dot.classList.remove('disconnected');
-                    text.textContent = `Connected (${data.record_count} records)`;
+                    statusIndicator.querySelector('.status-dot').classList.remove('disconnected');
+                    statusText.textContent = `Connected • ${data.record_count} homeowners`;
+                    if (data.azure_search === 'configured') {
+                        statusText.textContent += ` • ${data.documents_indexed} docs`;
+                    }
                 } else {
-                    dot.classList.add('disconnected');
-                    text.textContent = 'Disconnected';
-                    showToast('Dataverse connection failed. Check credentials.', 'error');
+                    statusIndicator.querySelector('.status-dot').classList.add('disconnected');
+                    statusText.textContent = 'Disconnected';
                 }
-            } catch (e) {
-                const dot = statusIndicator.querySelector('.status-dot');
-                const text = statusIndicator.querySelector('span:last-child');
-                dot.classList.add('disconnected');
-                text.textContent = 'Offline';
+            } catch (error) {
+                statusIndicator.querySelector('.status-dot').classList.add('disconnected');
+                statusText.textContent = 'Connection error';
             }
         }
 
-        // Search function
-        async function search(query, type = null) {
-            if (!query || query.trim().length < 2) {
-                showToast('Enter at least 2 characters', 'error');
-                return;
-            }
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query || isSearching) return;
 
-            // Store query for highlighting
-            currentQuery = query.trim();
+            isSearching = true;
+            searchBtn.disabled = true;
+            resultsContainer.style.display = 'block';
 
-            isLoading = true;
-            welcomeState.style.display = 'none';
-            loadingState.style.display = 'block';
-            resultsContent.style.display = 'none';
-
-            const searchType = type || currentSearchType;
-            const params = new URLSearchParams({
-                q: query.trim(),
-                type: searchType
-            });
-
-            // Add community filter if active
-            if (communityFilter) {
-                params.append('community', communityFilter);
-            }
-
-            if (searchType === 'community' && delinquentCheckbox.checked) {
-                params.append('delinquent', 'true');
-            }
+            // Show loading
+            resultsContent.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Searching...</p>
+                </div>
+            `;
 
             try {
-                const resp = await fetch(`/api/search?${params}`);
+                const resp = await fetch(`/api/unified-search?q=${encodeURIComponent(query)}&mode=${currentMode}`);
                 const data = await resp.json();
 
-                if (resp.ok) {
-                    // Save to recent searches
-                    saveRecentSearch(query.trim());
-                    renderResults(data);
-                } else {
-                    showToast(data.error || 'Search failed', 'error');
-                    welcomeState.style.display = 'block';
-                    document.title = defaultTitle;
+                if (data.error) {
+                    showError(data.error);
+                    return;
                 }
-            } catch (e) {
-                showToast('Network error', 'error');
-                welcomeState.style.display = 'block';
-                document.title = defaultTitle;
+
+                renderResults(data);
+            } catch (error) {
+                showError('Search failed. Please try again.');
+                console.error('Search error:', error);
             } finally {
-                isLoading = false;
-                loadingState.style.display = 'none';
+                isSearching = false;
+                searchBtn.disabled = false;
             }
         }
 
-        // Render results
+        function showError(message) {
+            resultsContent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Oops!</h3>
+                    <p>${escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+
         function renderResults(data) {
-            resultsContent.style.display = 'block';
+            const hasHomeowners = data.homeowners && data.homeowners.length > 0;
+            const hasDocuments = data.documents && data.documents.length > 0;
+            const hasAiAnswer = data.ai_answer && data.ai_answer.extracted;
 
-            // Update tab title with result count
-            document.title = `(${data.count}) ${data.query} - Homeowner Assistant`;
-
-            if (!data.homeowners || data.homeowners.length === 0) {
-                document.title = `No results - Homeowner Assistant`;
-                const suggestions = generateSearchSuggestions(data.query);
+            if (!hasHomeowners && !hasDocuments) {
                 resultsContent.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">
+                        <div class="empty-state-icon">
                             <i class="fas fa-search"></i>
                         </div>
-                        <h3 class="empty-title">No results found</h3>
-                        <p class="empty-text">No homeowner found for "${escapeHtml(data.query)}"</p>
-                        ${suggestions ? `
-                        <div class="suggestions-box">
-                            <div class="suggestions-title"><i class="fas fa-lightbulb"></i> Try these suggestions</div>
-                            <div class="suggestions-list">${suggestions}</div>
-                        </div>
-                        ` : ''}
+                        <h3>No results found</h3>
+                        <p>Try a different search term or adjust your search mode.</p>
                     </div>
                 `;
                 return;
@@ -2161,125 +1601,157 @@
 
             let html = '';
 
-            // Summary for delinquent reports
-            if (data.search_type === 'community' && data.delinquent_only) {
+            // Results header
+            html += `
+                <div class="results-header">
+                    <div class="results-title">
+                        <i class="fas fa-sparkles"></i>
+                        Results for "${escapeHtml(data.query)}"
+                    </div>
+                    <span class="detected-badge">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        ${data.detected_type === 'homeowner' ? 'Homeowner Search' :
+                          data.detected_type === 'document' ? 'Document Search' : 'Combined Search'}
+                    </span>
+                </div>
+            `;
+
+            // AI Answer Card (if available)
+            if (hasAiAnswer) {
+                html += renderAiAnswerCard(data.ai_answer, data.community_detected);
+            }
+
+            // Homeowner Results
+            if (hasHomeowners) {
                 html += `
-                    <div class="results-summary">
-                        <div class="summary-stat">
-                            <div class="summary-value">${data.count}</div>
-                            <div class="summary-label">Delinquent Accounts</div>
+                    <div class="results-section">
+                        <div class="section-header">
+                            <div class="section-icon homeowner">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span class="section-title">Homeowners</span>
+                            <span class="section-count">${data.homeowners.length}</span>
                         </div>
-                        <div class="summary-stat">
-                            <div class="summary-value">$${formatMoney(data.total_outstanding)}</div>
-                            <div class="summary-label">Total Outstanding</div>
+                        <div class="results-grid">
+                            ${data.homeowners.map(h => renderHomeownerCard(h)).join('')}
                         </div>
                     </div>
                 `;
             }
 
-            // Header with print button
-            html += `
-                <div class="results-header">
-                    <span class="results-title">Search Results</span>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span class="results-count">${data.count} result${data.count !== 1 ? 's' : ''} for "${escapeHtml(data.query)}"</span>
-                        <button class="print-btn" onclick="window.print()">
-                            <i class="fas fa-print"></i> Print
-                        </button>
+            // Document Results
+            if (hasDocuments) {
+                html += `
+                    <div class="results-section">
+                        <div class="section-header">
+                            <div class="section-icon document">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <span class="section-title">Documents</span>
+                            <span class="section-count">${data.documents.length}</span>
+                        </div>
+                        <div class="results-grid">
+                            ${data.documents.map(d => renderDocumentCard(d)).join('')}
+                        </div>
                     </div>
-                </div>
-            `;
-
-            // Cards
-            html += '<div class="results-grid">';
-            data.homeowners.forEach(h => {
-                html += renderCard(h);
-            });
-            html += '</div>';
+                `;
+            }
 
             resultsContent.innerHTML = html;
-
-            // Attach copy handlers
-            resultsContent.querySelectorAll('.copy-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const text = btn.dataset.copy;
-                    copyToClipboard(text, btn);
-                });
-            });
-
-            // Attach text button handlers (CT Text)
-            resultsContent.querySelectorAll('.text-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const phone = btn.dataset.phone;
-                    navigator.clipboard.writeText(phone).then(() => {
-                        btn.classList.add('copied');
-                        setTimeout(() => btn.classList.remove('copied'), 1500);
-                    });
-                });
-            });
         }
 
-        // Generate search suggestions for no results
-        function generateSearchSuggestions(query) {
-            const suggestions = [];
+        function renderAiAnswerCard(aiAnswer, community) {
+            const extracted = aiAnswer.extracted;
+            const type = aiAnswer.extraction_type;
 
-            // If it looks like a phone, suggest trying with different formats
-            if (/\d{3}.*\d{3}.*\d{4}/.test(query) || /\d{10}/.test(query.replace(/\D/g, ''))) {
-                suggestions.push(`<span class="suggestion-chip" onclick="searchInput.value='${escapeHtml(query.replace(/\D/g, '').slice(-10))}'; search('${escapeHtml(query.replace(/\D/g, '').slice(-10))}', 'phone')">Try phone: ${escapeHtml(query.replace(/\D/g, '').slice(-10))}</span>`);
+            if (extracted.not_found) {
+                return `
+                    <div class="ai-answer-card" style="border-color: var(--warning);">
+                        <div class="ai-answer-header">
+                            <div class="ai-icon" style="background: linear-gradient(135deg, var(--warning) 0%, var(--accent-orange) 100%);">
+                                <i class="fas fa-question"></i>
+                            </div>
+                            <div>
+                                <div class="ai-answer-title">Information Not Found</div>
+                                <div class="ai-answer-subtitle">Couldn't find a specific answer in the documents</div>
+                            </div>
+                        </div>
+                        <div class="ai-summary">${escapeHtml(extracted.suggestion || 'Try searching with different keywords.')}</div>
+                    </div>
+                `;
             }
 
-            // If it has numbers, might be an address or account
-            if (/\d/.test(query)) {
-                if (query.length >= 4 && query.length <= 10) {
-                    suggestions.push(`<span class="suggestion-chip" onclick="searchInput.value='${escapeHtml(query)}'; search('${escapeHtml(query)}', 'account')">Search as account #</span>`);
-                }
+            let contentHtml = '';
+
+            // Type-specific rendering
+            if (type === 'fence' && extracted.max_height_back) {
+                contentHtml = `
+                    <div class="ai-answer-content">
+                        <div class="ai-data-item">
+                            <span class="ai-data-label">Max Height (Backyard)</span>
+                            <span class="ai-data-value">${escapeHtml(extracted.max_height_back)}</span>
+                        </div>
+                        <div class="ai-data-item">
+                            <span class="ai-data-label">Max Height (Front)</span>
+                            <span class="ai-data-value">${escapeHtml(extracted.max_height_front || 'N/A')}</span>
+                        </div>
+                        <div class="ai-data-item">
+                            <span class="ai-data-label">ARC Required</span>
+                            <span class="ai-data-value">${extracted.arc_required ? '✅ Yes' : '❌ No'}</span>
+                        </div>
+                    </div>
+                    ${extracted.approved_materials ? `
+                        <div class="ai-tags">
+                            ${extracted.approved_materials.map(m => `<span class="ai-tag">${escapeHtml(m)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            } else if (type === 'pool' && extracted.hours) {
+                contentHtml = `
+                    <div class="ai-answer-content">
+                        <div class="ai-data-item">
+                            <span class="ai-data-label">Pool Hours</span>
+                            <span class="ai-data-value">${escapeHtml(extracted.hours)}</span>
+                        </div>
+                        <div class="ai-data-item">
+                            <span class="ai-data-label">Guest Policy</span>
+                            <span class="ai-data-value">${escapeHtml(extracted.guest_policy || 'See rules')}</span>
+                        </div>
+                    </div>
+                    ${extracted.key_rules ? `
+                        <div class="ai-tags">
+                            ${extracted.key_rules.map(r => `<span class="ai-tag">${escapeHtml(r)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            } else if (extracted.key_points) {
+                contentHtml = `
+                    <div class="ai-tags">
+                        ${extracted.key_points.map(p => `<span class="ai-tag">${escapeHtml(p)}</span>`).join('')}
+                    </div>
+                `;
             }
 
-            // If it's text, might be name or community
-            if (/^[a-zA-Z\s]+$/.test(query)) {
-                suggestions.push(`<span class="suggestion-chip" onclick="searchInput.value='${escapeHtml(query)}'; search('${escapeHtml(query)}', 'community')">Search communities</span>`);
-            }
-
-            // Always suggest selecting a community filter
-            if (!communityFilter) {
-                suggestions.push(`<span class="suggestion-chip" onclick="document.querySelector('.quick-btn').click()">Filter by community first</span>`);
-            }
-
-            return suggestions.length > 0 ? suggestions.join('') : null;
+            return `
+                <div class="ai-answer-card">
+                    <div class="ai-answer-header">
+                        <div class="ai-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div>
+                            <div class="ai-answer-title">AI-Extracted Answer</div>
+                            <div class="ai-answer-subtitle">${community ? `For ${escapeHtml(community)}` : 'From community documents'}</div>
+                        </div>
+                    </div>
+                    ${contentHtml}
+                    ${extracted.summary ? `<div class="ai-summary">${escapeHtml(extracted.summary)}</div>` : ''}
+                    ${extracted.answer ? `<div class="ai-summary">${escapeHtml(extracted.answer)}</div>` : ''}
+                </div>
+            `;
         }
 
-        // Attorney phone lookup
-        const ATTORNEY_PHONES = {
-            'Niemann & Niemann': '(512) 474-6901',
-            'Cagle Pugh': '(737) 261-0600',
-            'Roberts Markel Weinberg Butler Hailey': '(713) 840-1666',
-            'Winstead': '(214) 745-5400',
-            'Willatt & Flickinger': '(512) 476-6604'
-        };
-
-        function getAttorneyPhone(provider) {
-            if (!provider) return null;
-            for (const [name, phone] of Object.entries(ATTORNEY_PHONES)) {
-                if (provider.toLowerCase().includes(name.toLowerCase())) {
-                    return phone;
-                }
-            }
-            return null;
-        }
-
-        // Check if account is with attorney
-        function isAttorneyAccount(status) {
-            if (!status) return false;
-            const lower = status.toLowerCase();
-            return lower.includes('attorney') || lower.includes('with attorney') || lower.includes('pmt plan - attorney');
-        }
-
-        // Render single card
-        function renderCard(h) {
-            const isAttorney = isAttorneyAccount(h.collection_status);
-            const attorneyPhone = getAttorneyPhone(h.collection_provider);
+        function renderHomeownerCard(h) {
+            const isAttorney = h.collection_status && h.collection_status.toLowerCase().includes('attorney');
 
             let cardClass = 'homeowner-card';
             if (isAttorney) {
@@ -2303,26 +1775,15 @@
                 statusBadge = '<span class="status-badge badge-30days">30+ Days</span>';
             }
 
-            // Use balance intensity class
-            let balanceClass = getBalanceClass(h.balance);
-            if (h.balance_status === 'credit') balanceClass = 'balance-credit';
+            let balanceClass = 'balance-current';
+            if (h.balance > 1000) balanceClass = 'balance-high';
+            else if (h.balance > 500) balanceClass = 'balance-medium';
+            else if (h.balance > 0) balanceClass = 'balance-low';
+            else if (h.balance_status === 'credit') balanceClass = 'balance-credit';
 
-            // Build phone with text button (for CT Text)
-            const phoneLink = h.phone !== 'N/A'
-                ? `<span class="copyable">
-                    <a href="tel:${h.phone}">${highlightText(h.phone, currentQuery)}</a>
-                    <button class="text-btn" data-phone="${escapeHtml(h.phone)}" title="Copy for CT Text"><i class="fas fa-sms"></i></button>
-                   </span>`
-                : 'N/A';
-
-            // Build email with copy button
-            const emailLink = h.email !== 'N/A'
-                ? `<span class="copyable"><a href="mailto:${h.email}">${highlightText(h.email, currentQuery)}</a><button class="copy-btn" data-copy="${escapeHtml(h.email)}" title="Copy email"><i class="fas fa-copy"></i></button></span>`
-                : 'N/A';
-
-            // Build tags section
+            // Tags
             let tagsHtml = '';
-            if (h.tenant_name || h.collection_provider || (h.tags && h.tags.length > 0) || h.unit_lot) {
+            if (h.tenant_name || h.collection_provider || h.unit_lot) {
                 tagsHtml = '<div class="card-tags">';
                 if (h.tenant_name) {
                     tagsHtml += `<span class="tag-badge tenant"><i class="fas fa-user-friends"></i> Tenant: ${escapeHtml(h.tenant_name)}</span>`;
@@ -2333,42 +1794,33 @@
                 if (h.unit_lot) {
                     tagsHtml += `<span class="tag-badge"><i class="fas fa-door-open"></i> ${escapeHtml(h.unit_lot)}</span>`;
                 }
-                if (h.tags && h.tags.length > 0) {
-                    h.tags.forEach(tag => {
-                        tagsHtml += `<span class="tag-badge">${escapeHtml(tag)}</span>`;
-                    });
-                }
                 tagsHtml += '</div>';
             }
 
-            // Build financial section (last payment) - HIDE for attorney accounts
+            // Financial section
             let financialHtml = '';
             if (h.last_payment && !isAttorney) {
                 financialHtml = `
                     <div class="card-financial">
                         <div class="financial-item">
-                            <div class="financial-value ${h.balance_status === 'owed' ? 'negative' : (h.balance_status === 'credit' ? 'positive' : '')}">${h.balance_display}</div>
-                            <div class="financial-label">Current Balance</div>
+                            <div class="financial-value ${h.balance > 0 ? 'negative' : (h.balance_status === 'credit' ? 'positive' : '')}">${escapeHtml(h.balance_display)}</div>
+                            <div class="financial-label">Balance</div>
                         </div>
                         <div class="financial-item">
-                            <div class="financial-value positive">${h.last_payment.amount}</div>
+                            <div class="financial-value positive">${escapeHtml(h.last_payment.amount)}</div>
                             <div class="financial-label">Last Payment</div>
                         </div>
                         <div class="financial-item">
-                            <div class="financial-value">${h.last_payment.date}</div>
+                            <div class="financial-value">${escapeHtml(h.last_payment.date)}</div>
                             <div class="financial-label">Payment Date</div>
                         </div>
                     </div>
                 `;
             }
 
-            // Build attorney warning banner
+            // Attorney warning
             let attorneyWarningHtml = '';
             if (isAttorney) {
-                const providerName = h.collection_provider || 'Collection Attorney';
-                const phone = attorneyPhone || 'Contact PS Property Management';
-                const phoneHref = attorneyPhone ? `tel:${attorneyPhone.replace(/[^\d]/g, '')}` : '#';
-
                 attorneyWarningHtml = `
                     <div class="attorney-warning">
                         <div class="attorney-warning-title">
@@ -2379,549 +1831,173 @@
                             This account has been referred to an attorney for collections.<br>
                             <strong>Do NOT discuss balance or payment details with the homeowner.</strong>
                         </div>
-                        <div class="attorney-contact">
-                            <div class="attorney-name">${escapeHtml(providerName)}</div>
-                            <div class="attorney-phone">
-                                <i class="fas fa-phone"></i>
-                                <a href="${phoneHref}">${escapeHtml(phone)}</a>
+                        ${h.collection_provider ? `
+                            <div class="attorney-contact">
+                                <div class="attorney-name">${escapeHtml(h.collection_provider)}</div>
                             </div>
-                        </div>
+                        ` : ''}
                     </div>
                 `;
             }
 
-            // Build extra contacts section
-            let extraContactsHtml = '';
-            if ((h.all_phones && h.all_phones !== h.phone) || (h.all_emails && h.all_emails !== h.email)) {
-                extraContactsHtml = '<div class="card-extra">';
-                if (h.all_phones && h.all_phones !== h.phone) {
-                    const phones = h.all_phones.split(';').map(p => p.trim()).filter(p => p);
-                    if (phones.length > 0) {
-                        extraContactsHtml += `
-                            <div class="extra-row">
-                                <i class="fas fa-phone-alt"></i>
-                                <span class="extra-label">All Phones:</span>
-                                ${phones.map(p => `<a href="tel:${p}">${escapeHtml(p)}</a>`).join(', ')}
-                            </div>
-                        `;
-                    }
-                }
-                if (h.all_emails && h.all_emails !== h.email) {
-                    const emails = h.all_emails.split(';').map(e => e.trim()).filter(e => e);
-                    if (emails.length > 0) {
-                        extraContactsHtml += `
-                            <div class="extra-row">
-                                <i class="fas fa-at"></i>
-                                <span class="extra-label">All Emails:</span>
-                                ${emails.map(e => `<a href="mailto:${e}">${escapeHtml(e)}</a>`).join(', ')}
-                            </div>
-                        `;
-                    }
-                }
-                extraContactsHtml += '</div>';
-            }
-
-            // Hide balance in header for attorney accounts
-            const balanceLabel = h.balance_status === 'credit' ? 'Credit Balance' : 'Balance';
+            // Balance header (hide for attorney)
             const balanceHeaderHtml = isAttorney ? '' : `
-                        <div class="card-balance">
-                            <div class="balance-amount ${balanceClass}">${h.balance_display}</div>
-                            <div class="balance-label">${balanceLabel}</div>
-                        </div>`;
+                <div class="card-balance">
+                    <div class="balance-amount ${balanceClass}">${escapeHtml(h.balance_display)}</div>
+                    <div class="balance-label">${h.balance_status === 'credit' ? 'Credit Balance' : 'Balance'}</div>
+                </div>
+            `;
 
             return `
                 <div class="${cardClass}">
                     <div class="card-header">
-                        <div class="card-name">
-                            ${highlightText(h.owner_name, currentQuery)}
+                        <div>
+                            <div class="card-name">${escapeHtml(h.owner_name)}</div>
+                            <div class="card-community">${escapeHtml(h.community)}</div>
                             ${statusBadge}
                         </div>
                         ${balanceHeaderHtml}
                     </div>
                     ${attorneyWarningHtml}
                     ${tagsHtml}
-
+                    ${financialHtml}
                     <div class="card-details">
                         <div class="detail-item">
-                            <div class="detail-icon">
-                                <i class="fas fa-map-marker-alt"></i>
-                            </div>
+                            <div class="detail-icon"><i class="fas fa-map-marker-alt"></i></div>
                             <div class="detail-content">
                                 <div class="detail-label">Address</div>
-                                <div class="detail-value">${highlightText(h.property_address, currentQuery)}</div>
+                                <div class="detail-value">${escapeHtml(h.property_address)}</div>
                             </div>
                         </div>
-
                         <div class="detail-item">
-                            <div class="detail-icon">
-                                <i class="fas fa-building"></i>
-                            </div>
+                            <div class="detail-icon"><i class="fas fa-phone"></i></div>
                             <div class="detail-content">
-                                <div class="detail-label">Community</div>
-                                <div class="detail-value">${highlightText(h.community, currentQuery)}</div>
-                            </div>
-                        </div>
-
-                        <div class="detail-item">
-                            <div class="detail-icon">
-                                <i class="fas fa-hashtag"></i>
-                            </div>
-                            <div class="detail-content">
-                                <div class="detail-label">Account</div>
+                                <div class="detail-label">Phone</div>
                                 <div class="detail-value">
-                                    <span class="copyable">${highlightText(h.account_number, currentQuery)}<button class="copy-btn" data-copy="${escapeHtml(h.account_number)}" title="Copy account"><i class="fas fa-copy"></i></button></span>
+                                    ${h.phone !== 'N/A' ? `<a href="tel:${h.phone}">${escapeHtml(h.phone)}</a>` : 'N/A'}
                                 </div>
                             </div>
                         </div>
-
                         <div class="detail-item">
-                            <div class="detail-icon">
-                                <i class="fas fa-phone"></i>
-                            </div>
-                            <div class="detail-content">
-                                <div class="detail-label">Phone</div>
-                                <div class="detail-value">${phoneLink}</div>
-                            </div>
-                        </div>
-
-                        <div class="detail-item">
-                            <div class="detail-icon">
-                                <i class="fas fa-envelope"></i>
-                            </div>
+                            <div class="detail-icon"><i class="fas fa-envelope"></i></div>
                             <div class="detail-content">
                                 <div class="detail-label">Email</div>
-                                <div class="detail-value email-value">${emailLink}</div>
+                                <div class="detail-value">
+                                    ${h.email !== 'N/A' ? `<a href="mailto:${h.email}">${escapeHtml(h.email)}</a>` : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-icon"><i class="fas fa-hashtag"></i></div>
+                            <div class="detail-content">
+                                <div class="detail-label">Account</div>
+                                <div class="detail-value">${escapeHtml(h.account_number)}</div>
                             </div>
                         </div>
                     </div>
-
-                    ${financialHtml}
-                    ${extraContactsHtml}
-
-                    <!-- Account Ledger Section -->
-                    ${!isAttorney ? `
-                    <div class="ledger-section">
-                        <button class="ledger-toggle" data-account="${escapeHtml(h.account_number)}" onclick="toggleLedger(this)">
-                            <i class="fas fa-receipt"></i>
-                            <span>View Account Ledger</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="ledger-container" id="ledger-${escapeHtml(h.account_number).replace(/[^a-zA-Z0-9]/g, '')}">
-                            <!-- Ledger content loads here -->
-                        </div>
-                    </div>
-                    ` : ''}
-
                     <div class="card-actions">
                         ${h.vantaca_url ? `
-                            <a href="${escapeHtml(h.vantaca_url)}" target="_blank" class="action-btn action-btn-primary">
+                            <a href="${escapeHtml(h.vantaca_url)}" target="_blank" class="btn btn-primary">
                                 <i class="fas fa-external-link-alt"></i> Open in Vantaca
                             </a>
                         ` : ''}
+                        <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(h.phone)}')">
+                            <i class="fas fa-copy"></i> Copy Phone
+                        </button>
                     </div>
-
-                    ${h.last_synced_display ? `
-                    <div class="card-sync-info" title="Last updated in Vantaca">
-                        <i class="fas fa-sync-alt"></i>
-                        <span>Data as of ${escapeHtml(h.last_synced_display)}</span>
-                    </div>
-                    ` : ''}
                 </div>
             `;
         }
 
-        // Utility functions
+        function renderDocumentCard(doc) {
+            const typeInfo = doc.doc_type_info || { icon: 'file-alt', color: '#0078d4', label: 'Document' };
+
+            // Get snippet from captions or content
+            let snippet = '';
+            if (doc.captions && doc.captions.length > 0) {
+                snippet = doc.captions[0].text || doc.captions[0].highlights || '';
+            } else if (doc.content_snippet) {
+                snippet = doc.content_snippet.substring(0, 200) + '...';
+            }
+
+            // Format date
+            let dateStr = '';
+            if (doc.last_modified) {
+                try {
+                    const date = new Date(doc.last_modified);
+                    dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                } catch (e) {
+                    dateStr = '';
+                }
+            }
+
+            // Decode SharePoint URL if needed
+            let sharePointUrl = '';
+            if (doc.path) {
+                try {
+                    // The path is usually base64 encoded
+                    const decoded = atob(doc.path.replace('aHR0cHM6Ly9wc3Byb3Auc2hhcmVwb2ludC5jb20v', ''));
+                    sharePointUrl = 'https://psprop.sharepoint.com/' + decoded;
+                } catch (e) {
+                    sharePointUrl = doc.path;
+                }
+            }
+
+            return `
+                <div class="document-card" style="--doc-color: ${typeInfo.color}">
+                    <div class="doc-header">
+                        <div class="doc-icon" style="background: ${typeInfo.color}">
+                            <i class="fas fa-${typeInfo.icon}"></i>
+                        </div>
+                        <div class="doc-title-section">
+                            <div class="doc-type-label">${escapeHtml(typeInfo.label)}</div>
+                            <div class="doc-title">${escapeHtml(doc.title)}</div>
+                            ${doc.community ? `
+                                <div class="doc-community">
+                                    <i class="fas fa-building"></i>
+                                    ${escapeHtml(doc.community)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${snippet ? `<div class="doc-snippet">${snippet}</div>` : ''}
+                    <div class="doc-meta">
+                        ${dateStr ? `
+                            <div class="doc-meta-item">
+                                <i class="fas fa-calendar"></i>
+                                ${dateStr}
+                            </div>
+                        ` : ''}
+                        <div class="doc-meta-item">
+                            <i class="fas fa-star"></i>
+                            ${doc.score ? doc.score.toFixed(2) : 'N/A'} relevance
+                        </div>
+                    </div>
+                    <div class="doc-actions">
+                        <a href="${escapeHtml(sharePointUrl)}" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt"></i> View in SharePoint
+                        </a>
+                        <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(doc.title)}')">
+                            <i class="fas fa-copy"></i> Copy Title
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Could add a toast notification here
+                console.log('Copied:', text);
+            });
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-
-        function formatMoney(amount) {
-            return new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount || 0);
-        }
-
-        // ============================================
-        // ACCOUNT LEDGER FUNCTIONS
-        // ============================================
-        const ledgerCache = {}; // Cache ledger data by account
-
-        async function toggleLedger(btn) {
-            const account = btn.dataset.account;
-            const containerId = 'ledger-' + account.replace(/[^a-zA-Z0-9]/g, '');
-            const container = document.getElementById(containerId);
-
-            if (!container) {
-                console.error('Ledger container not found:', containerId);
-                return;
-            }
-
-            // Toggle visibility
-            const isVisible = container.classList.contains('show');
-
-            if (isVisible) {
-                // Hide ledger
-                container.classList.remove('show');
-                btn.classList.remove('active');
-                btn.querySelector('span').textContent = 'View Account Ledger';
-            } else {
-                // Show ledger
-                container.classList.add('show');
-                btn.classList.add('active');
-                btn.querySelector('span').textContent = 'Hide Account Ledger';
-
-                // Load data if not cached
-                if (!ledgerCache[account]) {
-                    await loadLedger(account, container);
-                }
-            }
-        }
-
-        async function loadLedger(account, container) {
-            // Show loading state
-            container.innerHTML = `
-                <div class="ledger-loading">
-                    <i class="fas fa-spinner"></i> Loading ledger...
-                </div>
-            `;
-
-            try {
-                const resp = await fetch(`/api/history?account=${encodeURIComponent(account)}&limit=15`);
-                const data = await resp.json();
-
-                if (data.error) {
-                    container.innerHTML = `
-                        <div class="ledger-error">
-                            <i class="fas fa-exclamation-circle"></i> ${escapeHtml(data.error)}
-                            ${data.message ? `<br><small>${escapeHtml(data.message)}</small>` : ''}
-                        </div>
-                    `;
-                    return;
-                }
-
-                if (!data.history || data.history.length === 0) {
-                    container.innerHTML = `
-                        <div class="ledger-empty">
-                            <i class="fas fa-inbox"></i> No ledger entries found
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Cache the data
-                ledgerCache[account] = data.history;
-
-                // Render ledger table
-                renderLedgerTable(container, data.history);
-
-            } catch (e) {
-                console.error('Ledger load error:', e);
-                container.innerHTML = `
-                    <div class="ledger-error">
-                        <i class="fas fa-exclamation-circle"></i> Failed to load ledger
-                    </div>
-                `;
-            }
-        }
-
-        function renderLedgerTable(container, history) {
-            // Display in order received from API (newest first)
-            let html = `
-                <div class="ledger-header">
-                    <div class="ledger-title">
-                        <i class="fas fa-receipt"></i> Account Ledger
-                    </div>
-                    <div class="ledger-subtitle">Last ${history.length} transactions</div>
-                </div>
-                <table class="ledger-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Charge</th>
-                            <th>Payment</th>
-                            <th>Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            for (const entry of history) {
-                const chargeAmt = entry.amount > 0 ? `$${Math.abs(entry.amount).toFixed(2)}` : '';
-                const paymentAmt = entry.amount < 0 ? `$${Math.abs(entry.amount).toFixed(2)}` : '';
-
-                // Format balance
-                let balanceDisplay = entry.balance_display || `$${Math.abs(entry.running_balance).toFixed(2)}`;
-                if (entry.running_balance < 0) {
-                    balanceDisplay = `(${balanceDisplay.replace('(', '').replace(')', '')})`; // Credit in parens
-                }
-
-                // Truncate description if too long
-                const desc = entry.description || entry.type || '';
-                const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
-
-                html += `
-                    <tr title="${escapeHtml(desc)}">
-                        <td class="ledger-date">${escapeHtml(entry.date)}</td>
-                        <td class="ledger-amount charge">${chargeAmt}</td>
-                        <td class="ledger-amount payment">${paymentAmt}</td>
-                        <td class="ledger-balance">${balanceDisplay}</td>
-                    </tr>
-                `;
-            }
-
-            html += `
-                    </tbody>
-                </table>
-            `;
-
-            container.innerHTML = html;
-        }
-
-        function showToast(message, type = 'info') {
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // Autocomplete functions
-        async function fetchSuggestions(query) {
-            if (query.length < 2) {
-                hideAutocomplete();
-                return;
-            }
-
-            // Show loading
-            autocompleteDropdown.innerHTML = `
-                <div class="autocomplete-loading">
-                    <i class="fas fa-spinner"></i> Searching...
-                </div>
-            `;
-            autocompleteDropdown.classList.add('show');
-
-            try {
-                const resp = await fetch(`/api/suggest?q=${encodeURIComponent(query)}`);
-                const data = await resp.json();
-
-                if (data.suggestions && data.suggestions.length > 0) {
-                    renderSuggestions(data.suggestions);
-                } else {
-                    hideAutocomplete();
-                }
-            } catch (e) {
-                hideAutocomplete();
-            }
-        }
-
-        function renderSuggestions(suggestions) {
-            activeAutocompleteIndex = -1;
-            let html = '';
-
-            suggestions.forEach((s, i) => {
-                html += `
-                    <div class="autocomplete-item" data-index="${i}" data-text="${escapeHtml(s.text)}" data-type="${s.type}">
-                        <div class="autocomplete-icon ${s.type}">
-                            <i class="fas fa-${s.icon}"></i>
-                        </div>
-                        <div class="autocomplete-text">
-                            <div class="autocomplete-main">${escapeHtml(s.text)}</div>
-                            ${s.subtext ? `<div class="autocomplete-sub">${escapeHtml(s.subtext)}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-
-            autocompleteDropdown.innerHTML = html;
-            autocompleteDropdown.classList.add('show');
-
-            // Add click handlers to items
-            autocompleteDropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-                item.addEventListener('click', () => selectSuggestion(item));
-            });
-        }
-
-        function selectSuggestion(item) {
-            const text = item.dataset.text;
-            const type = item.dataset.type;
-
-            searchInput.value = text;
-            hideAutocomplete();
-
-            // Auto-set search type based on suggestion type
-            let searchType = 'auto';
-            if (type === 'community') searchType = 'community';
-            else if (type === 'address') searchType = 'address';
-
-            // Update pills
-            typePills.forEach(p => {
-                p.classList.toggle('active', p.dataset.type === searchType);
-            });
-            currentSearchType = searchType;
-            delinquentToggle.style.display = searchType === 'community' ? 'flex' : 'none';
-
-            // Execute search
-            search(text, searchType);
-        }
-
-        function hideAutocomplete() {
-            autocompleteDropdown.classList.remove('show');
-            autocompleteDropdown.innerHTML = '';
-            activeAutocompleteIndex = -1;
-        }
-
-        function navigateAutocomplete(direction) {
-            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
-            if (items.length === 0) return;
-
-            // Remove active from current
-            if (activeAutocompleteIndex >= 0 && items[activeAutocompleteIndex]) {
-                items[activeAutocompleteIndex].classList.remove('active');
-            }
-
-            // Calculate new index
-            if (direction === 'down') {
-                activeAutocompleteIndex = (activeAutocompleteIndex + 1) % items.length;
-            } else {
-                activeAutocompleteIndex = activeAutocompleteIndex <= 0 ? items.length - 1 : activeAutocompleteIndex - 1;
-            }
-
-            // Add active to new
-            items[activeAutocompleteIndex].classList.add('active');
-            items[activeAutocompleteIndex].scrollIntoView({ block: 'nearest' });
-        }
-
-        // Debounced input handler
-        function handleSearchInput() {
-            const query = searchInput.value.trim();
-
-            // Clear previous timer
-            if (suggestDebounceTimer) {
-                clearTimeout(suggestDebounceTimer);
-            }
-
-            // Debounce - wait 300ms after typing stops
-            suggestDebounceTimer = setTimeout(() => {
-                fetchSuggestions(query);
-            }, 300);
-        }
-
-        // Event Listeners
-        searchBtn.addEventListener('click', () => {
-            hideAutocomplete();
-            search(searchInput.value);
-        });
-
-        // Input event for autocomplete (debounced)
-        searchInput.addEventListener('input', handleSearchInput);
-
-        // Keyboard navigation
-        searchInput.addEventListener('keydown', (e) => {
-            const isDropdownVisible = autocompleteDropdown.classList.contains('show');
-
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (isDropdownVisible && activeAutocompleteIndex >= 0) {
-                    const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
-                    if (items[activeAutocompleteIndex]) {
-                        selectSuggestion(items[activeAutocompleteIndex]);
-                    }
-                } else {
-                    hideAutocomplete();
-                    search(searchInput.value);
-                }
-            } else if (e.key === 'ArrowDown' && isDropdownVisible) {
-                e.preventDefault();
-                navigateAutocomplete('down');
-            } else if (e.key === 'ArrowUp' && isDropdownVisible) {
-                e.preventDefault();
-                navigateAutocomplete('up');
-            } else if (e.key === 'Escape') {
-                hideAutocomplete();
-            }
-        });
-
-        // Hide autocomplete when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
-                hideAutocomplete();
-            }
-        });
-
-        typePills.forEach(pill => {
-            pill.addEventListener('click', () => {
-                typePills.forEach(p => p.classList.remove('active'));
-                pill.classList.add('active');
-                currentSearchType = pill.dataset.type;
-
-                // Show/hide delinquent toggle
-                delinquentToggle.style.display =
-                    currentSearchType === 'community' ? 'flex' : 'none';
-            });
-        });
-
-        // Community filter buttons - toggle filter on/off
-        communityFilterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const community = btn.dataset.community;
-
-                // Toggle filter
-                if (communityFilter === community) {
-                    // Clear filter if clicking same button
-                    communityFilter = null;
-                    btn.classList.remove('active');
-                    activeFilterEl.style.display = 'none';
-                } else {
-                    // Set new filter
-                    communityFilter = community;
-                    communityFilterBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterValueEl.textContent = community;
-                    activeFilterEl.style.display = 'flex';
-                }
-
-                // If there's a search query, re-run search with filter
-                if (searchInput.value.trim().length >= 2) {
-                    search(searchInput.value);
-                }
-
-                searchInput.focus();
-            });
-        });
-
-        // Clear filter button
-        clearFilterBtn.addEventListener('click', () => {
-            communityFilter = null;
-            communityFilterBtns.forEach(b => b.classList.remove('active'));
-            activeFilterEl.style.display = 'none';
-
-            // Re-run search if there's a query
-            if (searchInput.value.trim().length >= 2) {
-                search(searchInput.value);
-            }
-
-            searchInput.focus();
-        });
-
-        exampleChips.forEach(chip => {
-            chip.addEventListener('click', () => {
-                searchInput.value = chip.dataset.query;
-                search(chip.dataset.query);
-            });
-        });
-
-        // Dark mode toggle
-        darkToggle.addEventListener('click', toggleDarkMode);
-
-        // Initialize
-        checkStatus();
-        initDarkMode();
-        renderRecentSearches();
-        searchInput.focus();
     </script>
 </body>
 </html>

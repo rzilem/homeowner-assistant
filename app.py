@@ -1,10 +1,12 @@
 """
-PSPM Homeowner Assistant - Standalone Agent
-Beautiful, fast homeowner lookup for customer service staff.
+PSPM Manager Wizard - Unified Search Tool
+Beautiful, intelligent search for homeowners and community documents.
+Smart auto-detection routes queries to the right data source.
 """
 import os
 import re
 import time
+import json
 import logging
 from flask import Flask, jsonify, request, render_template
 
@@ -13,6 +15,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# =============================================================================
+# AZURE AI SEARCH CONFIGURATION (SharePoint Documents)
+# =============================================================================
+AZURE_SEARCH_ENDPOINT = os.environ.get('AZURE_SEARCH_ENDPOINT', 'https://psmai.search.windows.net')
+AZURE_SEARCH_API_KEY = os.environ.get('AZURE_SEARCH_API_KEY', '')
+AZURE_SEARCH_INDEX = os.environ.get('AZURE_SEARCH_INDEX', 'sharepoint-docs')
+
+# =============================================================================
+# ANTHROPIC CONFIGURATION (Claude for answer extraction)
+# =============================================================================
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
 # =============================================================================
 # DATAVERSE CONFIGURATION
@@ -365,6 +379,351 @@ def format_homeowner(rec):
 
 
 # =============================================================================
+# DOCUMENT SEARCH (Azure AI Search + Claude Extraction)
+# =============================================================================
+
+# Document type patterns for smart cards
+DOCUMENT_PATTERNS = {
+    'ccr': {
+        'keywords': ['cc&r', 'ccr', 'covenants', 'conditions', 'restrictions', 'declaration'],
+        'icon': 'file-contract',
+        'color': '#1e40af',
+        'label': 'CC&Rs'
+    },
+    'rules': {
+        'keywords': ['rules', 'regulations', 'policy', 'policies', 'guidelines'],
+        'icon': 'list-check',
+        'color': '#7c3aed',
+        'label': 'Rules & Regulations'
+    },
+    'pool': {
+        'keywords': ['pool', 'swimming', 'aquatic'],
+        'icon': 'swimming-pool',
+        'color': '#0891b2',
+        'label': 'Pool Rules'
+    },
+    'architectural': {
+        'keywords': ['architectural', 'arc', 'design', 'modification', 'improvement'],
+        'icon': 'drafting-compass',
+        'color': '#ea580c',
+        'label': 'Architectural Guidelines'
+    },
+    'fence': {
+        'keywords': ['fence', 'fencing', 'barrier'],
+        'icon': 'border-all',
+        'color': '#65a30d',
+        'label': 'Fence Regulations'
+    },
+    'parking': {
+        'keywords': ['parking', 'vehicle', 'towing', 'garage'],
+        'icon': 'car',
+        'color': '#dc2626',
+        'label': 'Parking Rules'
+    },
+    'pet': {
+        'keywords': ['pet', 'animal', 'dog', 'cat'],
+        'icon': 'paw',
+        'color': '#db2777',
+        'label': 'Pet Policy'
+    },
+    'bylaws': {
+        'keywords': ['bylaws', 'by-laws', 'bylaw'],
+        'icon': 'gavel',
+        'color': '#4f46e5',
+        'label': 'Bylaws'
+    }
+}
+
+# Question patterns that indicate document search
+QUESTION_PATTERNS = [
+    r'\b(what|how|when|where|can i|am i allowed|is it okay|rules? for|policy on|guidelines? for)\b',
+    r'\b(fence|pool|parking|pet|architectural|arc|modification|violation)\b',
+    r'\b(cc&?r|bylaws?|regulations?|restrictions?)\b',
+    r'\b(height|limit|allowed|permitted|required|deadline)\b'
+]
+
+
+def detect_query_type(query):
+    """
+    Smart detection of query type.
+    Returns: 'homeowner', 'document', or 'both'
+    """
+    query_lower = query.lower().strip()
+    digits = re.sub(r'\D', '', query)
+
+    # Strong homeowner indicators
+    is_phone = len(digits) >= 7 and len(digits) <= 11
+    is_account = bool(re.match(r'^[A-Z]{2,4}\d{3,8}$', query.upper())) or \
+                 bool(re.match(r'^\d{4,8}$', query))
+    is_address = bool(re.match(r'^\d+\s+\w+', query)) and not any(kw in query_lower for kw in ['rule', 'policy', 'height', 'fence', 'pool'])
+    is_unit = bool(re.match(r'^(unit|lot|#)\s*\d+', query_lower))
+
+    # Strong document indicators
+    is_question = any(re.search(pattern, query_lower) for pattern in QUESTION_PATTERNS)
+    has_doc_keywords = any(
+        any(kw in query_lower for kw in doc_type['keywords'])
+        for doc_type in DOCUMENT_PATTERNS.values()
+    )
+
+    # Decision logic
+    if is_phone or is_account or is_unit:
+        return 'homeowner'
+
+    if is_question or has_doc_keywords:
+        # Check if also has a name pattern (e.g., "Smith fence rules")
+        words = query.split()
+        potential_name = len(words) >= 2 and words[0][0].isupper() and not has_doc_keywords
+        if potential_name and not is_question:
+            return 'both'
+        return 'document'
+
+    if is_address:
+        return 'homeowner'
+
+    # Default: could be a name search or general query
+    # If it looks like a name (capitalized words), try homeowner
+    if query[0].isupper() and ' ' not in query:
+        return 'homeowner'
+
+    # Ambiguous - search both
+    return 'both'
+
+
+def extract_community_from_query(query):
+    """Try to extract community name from query."""
+    # Common community name patterns
+    community_patterns = [
+        r'(?:for|in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
+        r'([A-Z][a-z]+(?:\s+(?:Creek|Park|Hills?|Valley|Ranch|Pointe?|Vista|Heights?))+)',
+    ]
+
+    for pattern in community_patterns:
+        match = re.search(pattern, query)
+        if match:
+            return match.group(1)
+    return None
+
+
+def search_azure_documents(query, community=None, top=10):
+    """Search Azure AI Search index for SharePoint documents."""
+    import requests
+
+    if not AZURE_SEARCH_API_KEY:
+        logger.warning("Azure Search not configured")
+        return []
+
+    url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{AZURE_SEARCH_INDEX}/docs/search?api-version=2024-05-01-preview"
+
+    # Build search query
+    search_text = query
+    if community:
+        search_text = f"{query} {community}"
+
+    payload = {
+        "search": search_text,
+        "queryType": "semantic",
+        "semanticConfiguration": "default",
+        "top": top,
+        "select": "metadata_storage_name,metadata_storage_path,metadata_storage_last_modified,content",
+        "captions": "extractive",
+        "answers": "extractive|count-3",
+        "highlightPreTag": "<mark>",
+        "highlightPostTag": "</mark>"
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "api-key": AZURE_SEARCH_API_KEY
+    }
+
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            results = []
+
+            # Process search results
+            for doc in data.get('value', []):
+                # Determine document type
+                doc_type = 'general'
+                doc_type_info = {'icon': 'file-alt', 'color': '#6b7280', 'label': 'Document'}
+
+                name_lower = (doc.get('metadata_storage_name') or '').lower()
+                for dtype, info in DOCUMENT_PATTERNS.items():
+                    if any(kw in name_lower for kw in info['keywords']):
+                        doc_type = dtype
+                        doc_type_info = info
+                        break
+
+                # Extract community from path
+                path = doc.get('metadata_storage_path') or ''
+                community_match = re.search(r'/([^/]+)/Association Documents/', path)
+                doc_community = community_match.group(1) if community_match else None
+
+                results.append({
+                    'title': doc.get('metadata_storage_name', 'Unknown'),
+                    'path': path,
+                    'community': doc_community,
+                    'doc_type': doc_type,
+                    'doc_type_info': doc_type_info,
+                    'last_modified': doc.get('metadata_storage_last_modified'),
+                    'content_snippet': (doc.get('content') or '')[:500],
+                    'captions': doc.get('@search.captions', []),
+                    'score': doc.get('@search.score', 0)
+                })
+
+            # Also get semantic answers if available
+            answers = data.get('@search.answers', [])
+
+            return {
+                'documents': results,
+                'answers': answers,
+                'count': len(results)
+            }
+        else:
+            logger.error(f"Azure Search failed: {resp.status_code} - {resp.text[:200]}")
+            return {'documents': [], 'answers': [], 'count': 0}
+    except Exception as e:
+        logger.error(f"Azure Search request failed: {e}")
+        return {'documents': [], 'answers': [], 'count': 0}
+
+
+def extract_answer_with_claude(query, documents, community=None):
+    """Use Claude to extract a structured answer from documents."""
+    import requests
+
+    if not ANTHROPIC_API_KEY or not documents:
+        return None
+
+    # Prepare document context
+    doc_context = ""
+    for i, doc in enumerate(documents[:3]):  # Top 3 docs
+        doc_context += f"\n--- Document {i+1}: {doc['title']} ---\n"
+        doc_context += doc.get('content_snippet', '')[:1000]
+        doc_context += "\n"
+
+    # Determine what type of info to extract
+    query_lower = query.lower()
+    extraction_type = "general"
+
+    if any(kw in query_lower for kw in ['fence', 'height', 'material']):
+        extraction_type = "fence"
+    elif any(kw in query_lower for kw in ['pool', 'swimming', 'hours']):
+        extraction_type = "pool"
+    elif any(kw in query_lower for kw in ['parking', 'vehicle', 'tow']):
+        extraction_type = "parking"
+    elif any(kw in query_lower for kw in ['pet', 'dog', 'cat', 'animal']):
+        extraction_type = "pet"
+    elif any(kw in query_lower for kw in ['architectural', 'arc', 'modification']):
+        extraction_type = "architectural"
+
+    # Build extraction prompt based on type
+    extraction_prompts = {
+        "fence": """Extract fence regulations into this JSON format:
+{
+    "max_height_back": "X feet",
+    "max_height_front": "X feet",
+    "approved_materials": ["material1", "material2"],
+    "arc_required": true/false,
+    "key_restrictions": ["restriction1", "restriction2"],
+    "summary": "One sentence summary"
+}""",
+        "pool": """Extract pool rules into this JSON format:
+{
+    "hours": "X AM - X PM",
+    "guest_policy": "description",
+    "key_rules": ["rule1", "rule2", "rule3"],
+    "restrictions": ["restriction1", "restriction2"],
+    "summary": "One sentence summary"
+}""",
+        "parking": """Extract parking rules into this JSON format:
+{
+    "allowed_vehicles": ["type1", "type2"],
+    "prohibited_vehicles": ["type1", "type2"],
+    "guest_parking": "description",
+    "towing_policy": "description",
+    "key_rules": ["rule1", "rule2"],
+    "summary": "One sentence summary"
+}""",
+        "pet": """Extract pet policy into this JSON format:
+{
+    "allowed_pets": ["type1", "type2"],
+    "max_pets": "X",
+    "weight_limit": "X lbs",
+    "leash_required": true/false,
+    "key_rules": ["rule1", "rule2"],
+    "summary": "One sentence summary"
+}""",
+        "architectural": """Extract architectural guidelines into this JSON format:
+{
+    "submission_required": true/false,
+    "approval_timeline": "X days",
+    "common_projects": ["project1", "project2"],
+    "prohibited_modifications": ["mod1", "mod2"],
+    "key_requirements": ["req1", "req2"],
+    "summary": "One sentence summary"
+}""",
+        "general": """Extract the relevant information into this JSON format:
+{
+    "answer": "Direct answer to the question",
+    "key_points": ["point1", "point2", "point3"],
+    "source_section": "Section name if found",
+    "summary": "One sentence summary"
+}"""
+    }
+
+    prompt = f"""You are a helpful assistant for PS Property Management. A manager is asking about community rules and policies.
+
+Question: {query}
+{f'Community: {community}' if community else ''}
+
+Here are the relevant documents:
+{doc_context}
+
+{extraction_prompts.get(extraction_type, extraction_prompts['general'])}
+
+If the information is not found in the documents, return {{"not_found": true, "suggestion": "what they should do instead"}}.
+Return ONLY valid JSON, no other text."""
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-3-5-haiku-20241022",
+                "max_tokens": 1000,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=30
+        )
+
+        if resp.status_code == 200:
+            content = resp.json()['content'][0]['text']
+            # Try to parse JSON
+            try:
+                # Find JSON in response
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if json_match:
+                    return {
+                        'extracted': json.loads(json_match.group()),
+                        'extraction_type': extraction_type
+                    }
+            except json.JSONDecodeError:
+                pass
+            return None
+        else:
+            logger.error(f"Claude API failed: {resp.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"Claude extraction failed: {e}")
+        return None
+
+
+# =============================================================================
 # ROUTES
 # =============================================================================
 
@@ -378,19 +737,137 @@ def index():
 def api_status():
     """Check Dataverse connection status."""
     token = get_dataverse_token()
+    azure_configured = bool(AZURE_SEARCH_API_KEY)
+
     if token:
         return jsonify({
             'status': 'connected',
             'dataverse_url': DATAVERSE_ENV_URL,
             'table': TABLE_NAME,
-            'record_count': '23,752+'
+            'record_count': '23,752+',
+            'azure_search': 'configured' if azure_configured else 'not configured',
+            'documents_indexed': '482,000+' if azure_configured else 'N/A'
         })
     else:
         return jsonify({
             'status': 'disconnected',
             'error': 'Could not connect to Dataverse',
-            'check_credentials': not bool(DATAVERSE_CLIENT_SECRET)
+            'check_credentials': not bool(DATAVERSE_CLIENT_SECRET),
+            'azure_search': 'configured' if azure_configured else 'not configured'
         }), 503
+
+
+@app.route('/api/unified-search')
+def unified_search():
+    """
+    Smart unified search - auto-detects whether to search homeowners or documents.
+    Returns structured results from both sources when appropriate.
+    """
+    query = request.args.get('q', '').strip()
+    mode = request.args.get('mode', 'auto')  # auto, homeowner, document, both
+
+    if not query:
+        return jsonify({'error': 'Query required'}), 400
+
+    # Detect query type if auto mode
+    if mode == 'auto':
+        detected_type = detect_query_type(query)
+    else:
+        detected_type = mode
+
+    # Extract community from query if present
+    community = extract_community_from_query(query)
+
+    result = {
+        'query': query,
+        'detected_type': detected_type,
+        'community_detected': community,
+        'homeowners': [],
+        'documents': [],
+        'ai_answer': None
+    }
+
+    # Search homeowners if needed
+    if detected_type in ['homeowner', 'both']:
+        # Reuse existing search logic
+        homeowner_result = search_homeowners_internal(query, community)
+        result['homeowners'] = homeowner_result.get('homeowners', [])
+        result['homeowner_count'] = len(result['homeowners'])
+
+    # Search documents if needed
+    if detected_type in ['document', 'both']:
+        doc_result = search_azure_documents(query, community)
+        result['documents'] = doc_result.get('documents', [])
+        result['document_count'] = len(result['documents'])
+        result['semantic_answers'] = doc_result.get('answers', [])
+
+        # If we have documents, try to extract a structured answer
+        if result['documents'] and ANTHROPIC_API_KEY:
+            ai_result = extract_answer_with_claude(query, result['documents'], community)
+            if ai_result:
+                result['ai_answer'] = ai_result
+
+    return jsonify(result)
+
+
+def search_homeowners_internal(query, community=None):
+    """Internal homeowner search - returns dict instead of Response."""
+    safe_query = query.replace("'", "''")
+    digits = normalize_phone(query)
+    upper_query = query.upper()
+
+    # Determine best search strategy
+    if len(digits) >= 7:
+        # Phone search
+        last4 = digits[-4:]
+        filter_expr = f"contains(cr258_primaryphone,'{last4}')"
+        if community:
+            filter_expr = f"contains(cr258_assoc_name,'{community}') and {filter_expr}"
+        results = query_dataverse(filter_expr, top=20)
+        if results:
+            results = [r for r in results if digits[-10:] in normalize_phone(r.get('cr258_primaryphone', ''))]
+    elif re.match(r'^[A-Z]{2,4}\d{3,8}$', upper_query) or re.match(r'^\d{4,8}$', query):
+        # Account search
+        filter_expr = f"contains(cr258_accountnumber,'{upper_query}')"
+        if community:
+            filter_expr = f"contains(cr258_assoc_name,'{community}') and {filter_expr}"
+        results = query_dataverse(filter_expr, top=20)
+    elif re.match(r'^\d+\s+\w+', query):
+        # Address search
+        filter_expr = f"contains(cr258_property_address,'{safe_query}')"
+        if community:
+            filter_expr += f" and contains(cr258_assoc_name,'{community}')"
+        results = query_dataverse(filter_expr, top=20)
+    else:
+        # General name/address search
+        filter_expr = f"(contains(cr258_owner_name,'{safe_query}') or contains(cr258_property_address,'{safe_query}'))"
+        if community:
+            filter_expr = f"contains(cr258_assoc_name,'{community}') and {filter_expr}"
+        results = query_dataverse(filter_expr, top=20)
+
+    homeowners = [format_homeowner(r) for r in (results or [])]
+    return {'homeowners': homeowners, 'count': len(homeowners)}
+
+
+@app.route('/api/documents/search')
+def search_documents():
+    """Direct document search endpoint."""
+    query = request.args.get('q', '').strip()
+    community = request.args.get('community', '').strip() or None
+    top = int(request.args.get('top', 10))
+    extract_answer = request.args.get('extract', 'true').lower() == 'true'
+
+    if not query:
+        return jsonify({'error': 'Query required'}), 400
+
+    result = search_azure_documents(query, community, top)
+
+    if extract_answer and result.get('documents') and ANTHROPIC_API_KEY:
+        ai_result = extract_answer_with_claude(query, result['documents'], community)
+        if ai_result:
+            result['ai_answer'] = ai_result
+
+    return jsonify(result)
 
 
 @app.route('/api/search')
