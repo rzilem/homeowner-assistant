@@ -956,6 +956,50 @@
             text-decoration: underline;
         }
 
+        /* User Menu */
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .logout-link {
+            color: var(--gray-400);
+            font-size: 0.9rem;
+            transition: color 0.15s ease;
+            padding: 4px;
+        }
+
+        .logout-link:hover {
+            color: var(--danger);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 { font-size: 1.75rem; }
@@ -969,6 +1013,8 @@
             .card-financial { grid-template-columns: 1fr; }
             .search-btn span { display: none; }
             .search-hints { display: none; }
+            .user-name { display: none; }
+            .user-menu { gap: 4px; }
         }
     </style>
 </head>
@@ -985,9 +1031,24 @@
                     <span class="logo-subtitle">PS Property Management</span>
                 </div>
             </a>
-            <div class="status-indicator" id="statusIndicator">
-                <span class="status-dot"></span>
-                <span id="statusText">Connected</span>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Connected</span>
+                </div>
+                {% if user %}
+                <div class="user-menu">
+                    <div class="user-avatar" title="{{ user.name }}">
+                        {{ user.first_name[0] if user.first_name else user.name[0] }}{{ user.last_name[0] if user.last_name else '' }}
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">{{ user.first_name or user.name }}</span>
+                        <a href="{{ url_for('logout') }}" class="logout-link" title="Sign out">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </header>

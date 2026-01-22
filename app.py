@@ -2,19 +2,72 @@
 PSPM Manager Wizard - Unified Search Tool
 Beautiful, intelligent search for homeowners and community documents.
 Smart auto-detection routes queries to the right data source.
+With Microsoft SSO authentication for PSPM staff.
 """
 import os
 import re
 import time
 import json
+import uuid
 import logging
-from flask import Flask, jsonify, request, render_template
+from functools import wraps
+from flask import Flask, jsonify, request, render_template, redirect, url_for, session
+from flask_session import Session
+import msal
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# =============================================================================
+# SESSION CONFIGURATION
+# =============================================================================
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', str(uuid.uuid4()))
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+Session(app)
+
+# =============================================================================
+# MICROSOFT AUTH CONFIGURATION
+# =============================================================================
+MS_CLIENT_ID = os.environ.get('MS_CLIENT_ID', '183f1eb2-8232-4bfd-981c-431974ddff28')
+MS_CLIENT_SECRET = os.environ.get('MS_CLIENT_SECRET', '')
+MS_TENANT_ID = os.environ.get('MS_TENANT_ID', '2ddb1df5-ce39-448e-86d2-a6b2184ac8a4')
+MS_AUTHORITY = f"https://login.microsoftonline.com/{MS_TENANT_ID}"
+MS_SCOPES = ["User.Read"]
+
+# Determine redirect URI based on environment
+def get_redirect_uri():
+    """Get the redirect URI based on the current request."""
+    # Check for Cloud Run or custom host header
+    host = request.headers.get('X-Forwarded-Host') or request.headers.get('Host', 'localhost:8080')
+    scheme = request.headers.get('X-Forwarded-Proto', 'https' if 'run.app' in host else 'http')
+    return f"{scheme}://{host}/auth/callback"
+
+
+def get_msal_app(cache=None):
+    """Create MSAL confidential client application."""
+    return msal.ConfidentialClientApplication(
+        MS_CLIENT_ID,
+        authority=MS_AUTHORITY,
+        client_credential=MS_CLIENT_SECRET,
+        token_cache=cache
+    )
+
+
+def login_required(f):
+    """Decorator to require authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('user'):
+            # Store the original URL to redirect back after login
+            session['next_url'] = request.url
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # =============================================================================
 # AZURE AI SEARCH CONFIGURATION (SharePoint Documents)
@@ -749,13 +802,122 @@ Return ONLY valid JSON, no other text."""
 
 
 # =============================================================================
+# AUTHENTICATION ROUTES
+# =============================================================================
+
+@app.route('/login')
+def login():
+    """Initiate Microsoft OAuth login flow."""
+    if not MS_CLIENT_SECRET:
+        # If auth not configured, show error
+        return render_template('login.html', error="Microsoft authentication not configured. Please contact administrator.")
+
+    # Create MSAL app and get auth URL
+    msal_app = get_msal_app()
+
+    # Generate a unique state for CSRF protection
+    state = str(uuid.uuid4())
+    session['auth_state'] = state
+
+    auth_url = msal_app.get_authorization_request_url(
+        scopes=MS_SCOPES,
+        state=state,
+        redirect_uri=get_redirect_uri()
+    )
+
+    logger.info(f"Redirecting to auth URL, redirect_uri={get_redirect_uri()}")
+    return redirect(auth_url)
+
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback from Microsoft."""
+    # Verify state to prevent CSRF
+    if request.args.get('state') != session.get('auth_state'):
+        logger.error("State mismatch in auth callback")
+        return render_template('login.html', error="Authentication failed: invalid state")
+
+    # Check for error in callback
+    if 'error' in request.args:
+        error_desc = request.args.get('error_description', request.args.get('error'))
+        logger.error(f"Auth error: {error_desc}")
+        return render_template('login.html', error=f"Authentication failed: {error_desc}")
+
+    # Exchange code for token
+    code = request.args.get('code')
+    if not code:
+        return render_template('login.html', error="No authorization code received")
+
+    msal_app = get_msal_app()
+
+    try:
+        result = msal_app.acquire_token_by_authorization_code(
+            code,
+            scopes=MS_SCOPES,
+            redirect_uri=get_redirect_uri()
+        )
+
+        if 'error' in result:
+            logger.error(f"Token error: {result.get('error_description', result.get('error'))}")
+            return render_template('login.html', error=f"Token error: {result.get('error_description', 'Unknown error')}")
+
+        if 'access_token' in result:
+            # Get user info from Microsoft Graph
+            import requests
+            headers = {'Authorization': f"Bearer {result['access_token']}"}
+            graph_resp = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers, timeout=10)
+
+            if graph_resp.status_code == 200:
+                user_data = graph_resp.json()
+
+                # Verify user is from PSPM tenant (psprop.net domain)
+                email = user_data.get('mail') or user_data.get('userPrincipalName', '')
+                if not email.lower().endswith('@psprop.net'):
+                    logger.warning(f"Non-PSPM user attempted login: {email}")
+                    return render_template('login.html', error="Access restricted to PS Property Management staff only.")
+
+                session['user'] = {
+                    'name': user_data.get('displayName', 'Unknown'),
+                    'email': email,
+                    'first_name': user_data.get('givenName', ''),
+                    'last_name': user_data.get('surname', ''),
+                    'job_title': user_data.get('jobTitle', ''),
+                    'id': user_data.get('id')
+                }
+                logger.info(f"User logged in: {email}")
+
+                # Redirect to original URL or home
+                next_url = session.pop('next_url', url_for('index'))
+                return redirect(next_url)
+            else:
+                logger.error(f"Graph API error: {graph_resp.status_code}")
+                return render_template('login.html', error="Failed to get user information")
+        else:
+            return render_template('login.html', error="No access token received")
+
+    except Exception as e:
+        logger.error(f"Auth callback error: {e}")
+        return render_template('login.html', error=f"Authentication error: {str(e)}")
+
+
+@app.route('/logout')
+def logout():
+    """Log out user and clear session."""
+    user = session.get('user', {})
+    session.clear()
+    logger.info(f"User logged out: {user.get('email', 'unknown')}")
+    return redirect(url_for('login'))
+
+
+# =============================================================================
 # ROUTES
 # =============================================================================
 
 @app.route('/')
+@login_required
 def index():
     """Render the main search interface."""
-    return render_template('index.html')
+    return render_template('index.html', user=session.get('user'))
 
 
 @app.route('/api/status')

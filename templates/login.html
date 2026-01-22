@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | Manager Wizard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0A66C2;
+            --primary-dark: #004182;
+            --primary-light: #E8F3FF;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F2EF;
+            --gray-200: #E8E6DF;
+            --gray-400: #9CA3AF;
+            --gray-500: #666666;
+            --gray-700: #333333;
+            --gray-800: #191919;
+            --gray-900: #000000;
+            --danger: #CC1016;
+            --danger-light: #FEE2E2;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--gray-100) 0%, #E3E8ED 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            text-align: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .logo-title {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--gray-900);
+        }
+
+        .logo-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--gray-500);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .error-message {
+            background: var(--danger-light);
+            color: var(--danger);
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .error-message i {
+            flex-shrink: 0;
+        }
+
+        .microsoft-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--gray-800);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .microsoft-btn:hover {
+            background: var(--gray-900);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .microsoft-btn:active {
+            transform: translateY(0);
+        }
+
+        .microsoft-logo {
+            width: 20px;
+            height: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2px;
+        }
+
+        .microsoft-logo span {
+            width: 8px;
+            height: 8px;
+        }
+
+        .microsoft-logo span:nth-child(1) { background: #F25022; }
+        .microsoft-logo span:nth-child(2) { background: #7FBA00; }
+        .microsoft-logo span:nth-child(3) { background: #00A4EF; }
+        .microsoft-logo span:nth-child(4) { background: #FFB900; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: var(--gray-400);
+            font-size: 0.8rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-200);
+        }
+
+        .divider span {
+            padding: 0 1rem;
+        }
+
+        .info-text {
+            color: var(--gray-500);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .info-text strong {
+            color: var(--gray-700);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            color: var(--gray-400);
+            font-size: 0.8rem;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Pulse animation for button */
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(10, 102, 194, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(10, 102, 194, 0); }
+        }
+
+        .microsoft-btn.pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-wand-magic-sparkles"></i>
+            </div>
+            <div class="logo-text">
+                <span class="logo-title">Manager Wizard</span>
+                <span class="logo-subtitle">PS Property Management</span>
+            </div>
+        </div>
+
+        <h1>Welcome</h1>
+        <p class="subtitle">Sign in with your PSPM Microsoft account to access the Manager Wizard.</p>
+
+        {% if error %}
+        <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <a href="{{ url_for('login') }}" class="microsoft-btn pulse">
+            <div class="microsoft-logo">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            Sign in with Microsoft
+        </a>
+
+        <div class="divider"><span>or</span></div>
+
+        <p class="info-text">
+            <strong>Access restricted to PSPM staff.</strong><br>
+            Use your <strong>@psprop.net</strong> email to sign in.
+            If you don't have access, contact IT support.
+        </p>
+
+        <div class="footer">
+            <p>PS Property Management &bull; <a href="tel:512-251-6122">512-251-6122</a></p>
+        </div>
+    </div>
+</body>
+</html>
