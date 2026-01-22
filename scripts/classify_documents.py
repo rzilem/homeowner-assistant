@@ -306,20 +306,31 @@ def extract_owner_account(name: str, path: str) -> Optional[str]:
     return None
 
 
-def search_documents(skip: int = 0, top: int = 1000, unclassified_only: bool = True) -> List[Dict]:
-    """Fetch documents from Azure Search index."""
+def search_documents(last_id: str = None, top: int = 1000, unclassified_only: bool = True) -> Tuple[List[Dict], int]:
+    """Fetch documents from Azure Search index using cursor-based pagination.
+
+    Azure Search limits $skip to 100,000. We use orderby + id filter for cursor pagination.
+    """
     url = f"{SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/search?api-version={API_VERSION}"
+
+    # Build filter
+    filters = []
+    if unclassified_only:
+        filters.append("(document_category eq null or document_category eq '')")
+    if last_id:
+        # Cursor pagination: get docs with id > last_id
+        filters.append(f"id gt '{last_id}'")
 
     body = {
         "search": "*",
-        "skip": skip,
         "top": top,
         "select": "id,metadata_spo_item_name,metadata_spo_item_path,document_category,community_name",
+        "orderby": "id asc",  # Required for cursor pagination
         "count": True
     }
 
-    if unclassified_only:
-        body["filter"] = "document_category eq null or document_category eq ''"
+    if filters:
+        body["filter"] = " and ".join(filters)
 
     response = requests.post(url, json=body, headers={
         "Content-Type": "application/json",
@@ -328,7 +339,7 @@ def search_documents(skip: int = 0, top: int = 1000, unclassified_only: bool = T
 
     if response.status_code != 200:
         print(f"Error searching: {response.status_code} - {response.text}")
-        return []
+        return [], 0
 
     data = response.json()
     return data.get('value', []), data.get('@odata.count', 0)
@@ -407,7 +418,7 @@ def get_classification_stats() -> Dict:
 
 
 def run_classification(reclassify_all: bool = False, dry_run: bool = False, batch_size: int = 100):
-    """Run document classification."""
+    """Run document classification using cursor-based pagination."""
     print("=" * 60)
     print("Document Classification")
     print("=" * 60)
@@ -416,7 +427,7 @@ def run_classification(reclassify_all: bool = False, dry_run: bool = False, batc
     print()
 
     # Get total count
-    _, total_count = search_documents(skip=0, top=1, unclassified_only=not reclassify_all)
+    _, total_count = search_documents(last_id=None, top=1, unclassified_only=not reclassify_all)
     print(f"Documents to process: {total_count}")
     print()
 
@@ -433,14 +444,17 @@ def run_classification(reclassify_all: bool = False, dry_run: bool = False, batc
         'by_access_level': {}
     }
 
-    skip = 0
+    last_id = None  # Cursor for pagination
     batch_updates = []
 
-    while skip < total_count:
-        docs, _ = search_documents(skip=skip, top=batch_size, unclassified_only=not reclassify_all)
+    while True:
+        docs, remaining = search_documents(last_id=last_id, top=batch_size, unclassified_only=not reclassify_all)
 
         if not docs:
             break
+
+        # Update cursor to last document's ID for next iteration
+        last_id = docs[-1].get('id')
 
         for doc in docs:
             doc_id = doc.get('id')
@@ -488,8 +502,6 @@ def run_classification(reclassify_all: bool = False, dry_run: bool = False, batc
             stats['failed'] += failed
             batch_updates = []
             print(f"  Progress: {stats['processed']}/{total_count} ({100*stats['processed']//total_count}%)")
-
-        skip += batch_size
 
     # Final batch
     if not dry_run and batch_updates:
