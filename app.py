@@ -1513,17 +1513,20 @@ def search_by_unit(unit_query, community_filter=None):
             filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
         results = query_dataverse(filter_expr, top=30)
 
-    # If still no results and value has letters, try just the numeric part (5A -> 5)
-    if not results and re.search(r'\d', safe_value):
+    # Exclude former clients
+    filtered = [r for r in (results or []) if not is_excluded_community(r.get('cr258_assoc_name'))]
+
+    # If still no results after filtering and value has letters, try just the numeric part (5A -> 5)
+    # This handles cases where "5A" matches excluded communities but "5" would match active ones
+    if not filtered and re.search(r'\d', safe_value):
         numeric_only = re.sub(r'[^0-9]', '', safe_value)
         if numeric_only and numeric_only != safe_value:
             filter_expr = f"(contains(cr258_unitnumber,'{numeric_only}') or contains(cr258_lotnumber,'{numeric_only}'))"
             if community_filter:
                 filter_expr = f"contains(cr258_assoc_name,'{safe_community}') and {filter_expr}"
             results = query_dataverse(filter_expr, top=30)
+            filtered = [r for r in (results or []) if not is_excluded_community(r.get('cr258_assoc_name'))]
 
-    # Exclude former clients
-    filtered = [r for r in (results or []) if not is_excluded_community(r.get('cr258_assoc_name'))]
     homeowners = [format_homeowner(r) for r in filtered]
 
     return jsonify({
