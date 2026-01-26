@@ -1721,13 +1721,13 @@
                         </div>
                     ` : '')}
                     <div class="ai-answer-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-                        <button class="copy-email-btn" onclick="copyAnswerForEmail(this, ${JSON.stringify({
-                            community: community || 'Community Documents',
-                            answer: mainAnswer,
-                            quote: quoteText,
-                            source: sourceName,
-                            sourceUrl: sourceUrl
-                        }).replace(/'/g, "\\'")})" title="Copy formatted answer for email">
+                        <button class="copy-email-btn"
+                            data-community="${escapeHtml(community || 'Community Documents')}"
+                            data-answer="${escapeHtml(mainAnswer)}"
+                            data-quote="${escapeHtml(quoteText)}"
+                            data-source="${escapeHtml(sourceName)}"
+                            onclick="copyAnswerForEmail(this)"
+                            title="Copy formatted answer for email">
                             <i class="fas fa-envelope"></i> Copy for Email
                         </button>
                     </div>
@@ -1885,17 +1885,17 @@
                                 <i class="fas fa-external-link-alt"></i> Open in Vantaca
                             </a>
                         ` : ''}
-                        <button class="copy-email-btn" onclick="copyHomeownerForEmail(this, '${cardId}', ${JSON.stringify({
-                            name: h.owner_name,
-                            community: h.community,
-                            address: h.property_address,
-                            phone: h.phone,
-                            email: h.email,
-                            account: h.account_number,
-                            balance: h.balance_display,
-                            balance_status: h.balance_status,
-                            vantaca_url: h.vantaca_url
-                        }).replace(/'/g, "\\'")})" title="Copy formatted info for email">
+                        <button class="copy-email-btn"
+                            data-name="${escapeHtml(h.owner_name)}"
+                            data-community="${escapeHtml(h.community)}"
+                            data-address="${escapeHtml(h.property_address)}"
+                            data-phone="${escapeHtml(h.phone)}"
+                            data-email="${escapeHtml(h.email)}"
+                            data-account="${escapeHtml(h.account_number)}"
+                            data-balance="${escapeHtml(h.balance_display)}"
+                            data-balance-status="${escapeHtml(h.balance_status || '')}"
+                            onclick="copyHomeownerForEmail(this)"
+                            title="Copy formatted info for email">
                             <i class="fas fa-envelope"></i> Copy for Email
                         </button>
                     </div>
@@ -1950,7 +1950,17 @@
         }
 
         // Copy homeowner info as formatted HTML for emails
-        function copyHomeownerForEmail(btn, cardId, data) {
+        function copyHomeownerForEmail(btn) {
+            const data = {
+                name: btn.dataset.name || 'N/A',
+                community: btn.dataset.community || 'N/A',
+                address: btn.dataset.address || 'N/A',
+                phone: btn.dataset.phone || 'N/A',
+                email: btn.dataset.email || 'N/A',
+                account: btn.dataset.account || 'N/A',
+                balance: btn.dataset.balance || 'N/A',
+                balance_status: btn.dataset.balanceStatus || ''
+            };
             const balanceColor = data.balance_status === 'credit' ? '#059669' :
                                  (parseFloat(data.balance?.replace(/[$,]/g, '')) > 500 ? '#dc2626' : '#ea580c');
 
@@ -1994,7 +2004,13 @@
         }
 
         // Copy AI answer as formatted HTML for emails
-        function copyAnswerForEmail(btn, data) {
+        function copyAnswerForEmail(btn) {
+            const data = {
+                community: btn.dataset.community || 'Community Documents',
+                answer: btn.dataset.answer || '',
+                quote: btn.dataset.quote || '',
+                source: btn.dataset.source || ''
+            };
             const html = `
 <table style="border-collapse: collapse; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-radius: 8px; border: 1px solid #a7d8c4; border-left: 4px solid #10b981; width: 100%; max-width: 500px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <tr>
