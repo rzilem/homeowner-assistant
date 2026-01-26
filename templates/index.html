@@ -2028,12 +2028,17 @@
                     wrapper.appendChild(questionDiv);
                 }
 
-                // Clone the card (without the copy button)
+                // Clone the card (without the copy button and header)
                 const cardClone = card.cloneNode(true);
                 // Remove the actions div from the clone
                 const actionsDiv = cardClone.querySelector('.ai-answer-actions');
                 if (actionsDiv) {
                     actionsDiv.remove();
+                }
+                // Remove the "Answer Found" header from the clone
+                const headerDiv = cardClone.querySelector('.ai-answer-header');
+                if (headerDiv) {
+                    headerDiv.remove();
                 }
                 wrapper.appendChild(cardClone);
 
