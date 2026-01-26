@@ -1,9 +1,9 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "1.0.0",
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "packageName": "com.psprop.homeownerassistant",
+  "version": "2.0.0",
+  "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "packageName": "com.psprop.managerwizard",
   "developer": {
     "name": "PS Property Management",
     "websiteUrl": "https://psprop.net",
@@ -15,20 +15,20 @@
     "outline": "outline.png"
   },
   "name": {
-    "short": "Homeowner Lookup",
-    "full": "PS Homeowner Assistant"
+    "short": "Manager Wizard",
+    "full": "PS Manager Wizard"
   },
   "description": {
-    "short": "Find any homeowner instantly",
-    "full": "Search 23,752+ homeowner records by phone, address, account, or community. Get instant access to balances, contact info, and Vantaca links."
+    "short": "Search homeowners & community documents",
+    "full": "Unified search for PSPM staff. Search 23,752+ homeowner records by phone, address, account, or community. Plus semantic search across all community documents (CC&Rs, rules, bylaws) with AI-powered answers."
   },
-  "accentColor": "#6366f1",
+  "accentColor": "#0A66C2",
   "staticTabs": [
     {
-      "entityId": "homeowner-lookup",
-      "name": "Homeowner Lookup",
-      "contentUrl": "https://homeowner-assistant-138752496729.us-central1.run.app",
-      "websiteUrl": "https://homeowner-assistant-138752496729.us-central1.run.app",
+      "entityId": "manager-wizard",
+      "name": "Manager Wizard",
+      "contentUrl": "https://manager-wizard-138752496729.us-central1.run.app",
+      "websiteUrl": "https://manager-wizard-138752496729.us-central1.run.app",
       "scopes": ["personal"]
     }
   ],
@@ -37,7 +37,7 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "homeowner-assistant-138752496729.us-central1.run.app",
+    "manager-wizard-138752496729.us-central1.run.app",
     "*.run.app"
   ]
 }
