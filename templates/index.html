@@ -282,6 +282,112 @@
             cursor: not-allowed;
         }
 
+        /* Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-300);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background 0.1s ease;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: var(--primary-light);
+        }
+
+        .autocomplete-item i {
+            color: var(--primary);
+            font-size: 0.875rem;
+        }
+
+        .autocomplete-name {
+            font-weight: 500;
+            color: var(--gray-800);
+        }
+
+        .autocomplete-code {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-left: auto;
+        }
+
+        .autocomplete-header {
+            padding: 0.5rem 1rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-500);
+            background: var(--gray-50);
+            font-weight: 600;
+        }
+
+        /* Did You Mean Suggestions */
+        .did-you-mean {
+            background: var(--warning-light);
+            border: 1px solid rgba(145, 89, 7, 0.2);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .did-you-mean-icon {
+            color: var(--warning);
+            font-size: 1.25rem;
+        }
+
+        .did-you-mean-text {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .did-you-mean-suggestion {
+            background: white;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .did-you-mean-suggestion:hover {
+            background: var(--primary);
+            color: white;
+        }
+
         /* Search Hints */
         .search-hints {
             display: flex;
@@ -1540,6 +1646,11 @@
                     <i class="fas fa-arrow-right"></i>
                     <span>Search</span>
                 </button>
+                <!-- Autocomplete Dropdown -->
+                <div class="autocomplete-dropdown" id="autocompleteDropdown">
+                    <div class="autocomplete-header">Communities</div>
+                    <div id="autocompleteList"></div>
+                </div>
             </div>
 
             <!-- Search Hints -->
@@ -1582,6 +1693,9 @@
         // State
         let currentMode = 'auto';
         let isSearching = false;
+        let allCommunities = [];
+        let autocompleteIndex = -1;
+        let debounceTimer = null;
 
         // Elements
         const searchInput = document.getElementById('searchInput');
@@ -1590,12 +1704,27 @@
         const resultsContent = document.getElementById('resultsContent');
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
+        const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+        const autocompleteList = document.getElementById('autocompleteList');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             checkStatus();
             setupEventListeners();
+            loadCommunities();
         });
+
+        // Load all communities for autocomplete
+        async function loadCommunities() {
+            try {
+                const resp = await fetch('/api/communities');
+                const data = await resp.json();
+                allCommunities = data.communities || [];
+                console.log(`Loaded ${allCommunities.length} communities for autocomplete`);
+            } catch (error) {
+                console.error('Failed to load communities:', error);
+            }
+        }
 
         function setupEventListeners() {
             document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -1609,7 +1738,23 @@
 
             searchBtn.addEventListener('click', performSearch);
             searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') performSearch();
+                if (e.key === 'Enter') {
+                    hideAutocomplete();
+                    performSearch();
+                }
+            });
+
+            // Autocomplete event listeners
+            searchInput.addEventListener('input', handleAutocompleteInput);
+            searchInput.addEventListener('keydown', handleAutocompleteKeydown);
+            searchInput.addEventListener('blur', () => {
+                // Delay to allow click on dropdown
+                setTimeout(hideAutocomplete, 150);
+            });
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.length >= 2) {
+                    showAutocomplete(searchInput.value);
+                }
             });
 
             document.querySelectorAll('.hint-chip').forEach(chip => {
@@ -1628,6 +1773,103 @@
                     performSearch();
                 });
             });
+        }
+
+        // Autocomplete functions
+        function handleAutocompleteInput(e) {
+            const query = e.target.value.trim();
+
+            // Debounce
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                if (query.length >= 2) {
+                    showAutocomplete(query);
+                } else {
+                    hideAutocomplete();
+                }
+            }, 150);
+        }
+
+        function handleAutocompleteKeydown(e) {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item');
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                autocompleteIndex = Math.min(autocompleteIndex + 1, items.length - 1);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                autocompleteIndex = Math.max(autocompleteIndex - 1, -1);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'Tab' || (e.key === 'Enter' && autocompleteIndex >= 0)) {
+                if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+                    e.preventDefault();
+                    selectAutocompleteItem(items[autocompleteIndex].dataset.name);
+                }
+            } else if (e.key === 'Escape') {
+                hideAutocomplete();
+            }
+        }
+
+        function updateAutocompleteSelection(items) {
+            items.forEach((item, i) => {
+                item.classList.toggle('selected', i === autocompleteIndex);
+            });
+        }
+
+        function showAutocomplete(query) {
+            const queryLower = query.toLowerCase();
+
+            // Filter communities
+            const matches = allCommunities.filter(c => {
+                const name = (c.name || '').toLowerCase();
+                const fullName = (c.full_name || '').toLowerCase();
+                return name.includes(queryLower) || fullName.includes(queryLower);
+            }).slice(0, 8);
+
+            if (matches.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+
+            // Build HTML
+            autocompleteList.innerHTML = matches.map(c => `
+                <div class="autocomplete-item" data-name="${c.name}" onclick="selectAutocompleteItem('${c.name.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-building"></i>
+                    <span class="autocomplete-name">${highlightMatch(c.name, query)}</span>
+                    <span class="autocomplete-code">${c.code || ''}</span>
+                </div>
+            `).join('');
+
+            autocompleteDropdown.classList.add('show');
+            autocompleteIndex = -1;
+        }
+
+        function highlightMatch(text, query) {
+            const index = text.toLowerCase().indexOf(query.toLowerCase());
+            if (index === -1) return text;
+            return text.substring(0, index) +
+                   '<strong>' + text.substring(index, index + query.length) + '</strong>' +
+                   text.substring(index + query.length);
+        }
+
+        function hideAutocomplete() {
+            autocompleteDropdown.classList.remove('show');
+            autocompleteIndex = -1;
+        }
+
+        function selectAutocompleteItem(name) {
+            searchInput.value = name;
+            hideAutocomplete();
+            // Auto-search after selection
+            performSearch();
+        }
+
+        // "Did You Mean?" click handler
+        function searchSuggestion(suggestion) {
+            searchInput.value = suggestion;
+            performSearch();
         }
 
         function updatePlaceholder() {
@@ -1708,18 +1950,53 @@
             const hasHomeowners = data.homeowners && data.homeowners.length > 0;
             const hasDocuments = data.documents && data.documents.length > 0;
             const hasAiAnswer = data.ai_answer && data.ai_answer.extracted;
+            const hasSuggestions = data.community_suggestions && data.community_suggestions.length > 0;
 
             if (!hasHomeowners && !hasDocuments) {
-                resultsContent.innerHTML = `
+                let emptyHtml = '';
+
+                // Show "Did you mean?" suggestions if available
+                if (hasSuggestions) {
+                    emptyHtml += `
+                        <div class="did-you-mean">
+                            <i class="fas fa-lightbulb did-you-mean-icon"></i>
+                            <span class="did-you-mean-text">Did you mean:</span>
+                            ${data.community_suggestions.map(s => `
+                                <button class="did-you-mean-suggestion" onclick="searchSuggestion('${s.replace(/'/g, "\\'")}')">
+                                    ${escapeHtml(s)}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                emptyHtml += `
                     <div class="empty-state">
                         <div class="empty-state-icon">
                             <i class="fas fa-search"></i>
                         </div>
                         <h3>No results found</h3>
-                        <p>Try a different search term or adjust your search mode.</p>
+                        <p>${hasSuggestions ? 'Try one of the suggestions above or' : 'Try'} a different search term.</p>
                     </div>
                 `;
+                resultsContent.innerHTML = emptyHtml;
                 return;
+            }
+
+            // Show suggestions even when we have some results but they might be wrong community
+            let suggestionsHtml = '';
+            if (hasSuggestions && !hasHomeowners) {
+                suggestionsHtml = `
+                    <div class="did-you-mean">
+                        <i class="fas fa-lightbulb did-you-mean-icon"></i>
+                        <span class="did-you-mean-text">Looking for a different community?</span>
+                        ${data.community_suggestions.map(s => `
+                            <button class="did-you-mean-suggestion" onclick="searchSuggestion('${s.replace(/'/g, "\\'")}')">
+                                ${escapeHtml(s)}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
             }
 
             let html = '';
@@ -1735,6 +2012,9 @@
                     </span>
                 </div>
             `;
+
+            // Add "Did you mean?" suggestions if available
+            html += suggestionsHtml;
 
             // Only show AI answer when NO homeowner results found (pure document searches)
             if (hasAiAnswer && !hasHomeowners) {

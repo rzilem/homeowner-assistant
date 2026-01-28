@@ -201,6 +201,137 @@ def normalize_community_name(name):
     return name.strip()
 
 
+# =============================================================================
+# FUZZY MATCHING / SPELL SUGGESTIONS
+# =============================================================================
+
+def levenshtein_distance(s1, s2):
+    """
+    Calculate Levenshtein distance between two strings.
+    Returns the minimum number of single-character edits needed to change s1 into s2.
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
+def get_community_suggestions(query, max_suggestions=5):
+    """
+    Find similar community names for "Did you mean?" suggestions.
+    Returns list of community names sorted by similarity to query.
+    """
+    if not query or not ACTIVE_COMMUNITIES:
+        return []
+
+    query_lower = query.lower().strip()
+    query_normalized = normalize_community_name(query)
+    suggestions = []
+
+    for comm in ACTIVE_COMMUNITIES:
+        short_name = comm.get('short_name', '')
+        full_name = comm.get('name', '')
+
+        if not short_name:
+            continue
+
+        short_lower = short_name.lower()
+        full_lower = full_name.lower() if full_name else ''
+        short_normalized = normalize_community_name(short_name)
+
+        # Skip exact matches
+        if query_lower == short_lower or query_lower == full_lower:
+            continue
+
+        # Calculate similarity scores
+        # Use both raw and normalized comparisons
+        dist_short = levenshtein_distance(query_lower, short_lower)
+        dist_normalized = levenshtein_distance(query_normalized, short_normalized)
+
+        # Use the better (lower) distance
+        best_dist = min(dist_short, dist_normalized)
+
+        # Also check for substring containment (common typos often contain correct letters)
+        substring_bonus = 0
+        if query_lower in short_lower or short_lower in query_lower:
+            substring_bonus = 3
+        if query_normalized in short_normalized or short_normalized in query_normalized:
+            substring_bonus = max(substring_bonus, 3)
+
+        # Words that start the same get a bonus
+        if short_lower.startswith(query_lower[:2]) or query_lower.startswith(short_lower[:2]):
+            substring_bonus += 1
+
+        # Adjusted score (lower is better)
+        score = best_dist - substring_bonus
+
+        # Only include if reasonably similar (distance less than half the query length + 3)
+        max_distance = max(len(query_lower) // 2 + 3, 4)
+        if best_dist <= max_distance:
+            suggestions.append({
+                'name': short_name,
+                'full_name': full_name,
+                'score': score,
+                'distance': best_dist
+            })
+
+    # Sort by score (lower is better) and take top suggestions
+    suggestions.sort(key=lambda x: (x['score'], x['distance']))
+    return [s['name'] for s in suggestions[:max_suggestions]]
+
+
+def get_autocomplete_matches(query, max_results=8):
+    """
+    Get community name matches for autocomplete dropdown.
+    Returns communities that start with or contain the query.
+    """
+    if not query or len(query) < 2 or not ACTIVE_COMMUNITIES:
+        return []
+
+    query_lower = query.lower().strip()
+    matches = []
+
+    for comm in ACTIVE_COMMUNITIES:
+        short_name = comm.get('short_name', '')
+        full_name = comm.get('name', '')
+        code = comm.get('code', '')
+
+        if not short_name:
+            continue
+
+        short_lower = short_name.lower()
+        full_lower = full_name.lower() if full_name else ''
+
+        # Priority 1: Starts with query
+        if short_lower.startswith(query_lower):
+            matches.append({'name': short_name, 'full_name': full_name, 'code': code, 'priority': 1})
+        # Priority 2: Full name starts with query
+        elif full_lower.startswith(query_lower):
+            matches.append({'name': short_name, 'full_name': full_name, 'code': code, 'priority': 2})
+        # Priority 3: Contains query
+        elif query_lower in short_lower:
+            matches.append({'name': short_name, 'full_name': full_name, 'code': code, 'priority': 3})
+        elif query_lower in full_lower:
+            matches.append({'name': short_name, 'full_name': full_name, 'code': code, 'priority': 4})
+
+    # Sort by priority, then alphabetically
+    matches.sort(key=lambda x: (x['priority'], x['name'].lower()))
+    return matches[:max_results]
+
+
 COLUMNS = [
     'cr258_owner_name', 'cr258_accountnumber', 'cr258_property_address',
     'cr258_assoc_name', 'cr258_balance', 'cr258_creditbalance',
@@ -1213,6 +1344,50 @@ def api_status():
         }), 503
 
 
+@app.route('/api/communities')
+def api_communities():
+    """Return list of communities for autocomplete."""
+    query = request.args.get('q', '').strip()
+
+    if query and len(query) >= 2:
+        # Return filtered matches
+        matches = get_autocomplete_matches(query)
+        return jsonify({
+            'communities': matches,
+            'count': len(matches)
+        })
+    else:
+        # Return all communities (for initial load)
+        communities = []
+        for comm in ACTIVE_COMMUNITIES:
+            if comm.get('short_name'):
+                communities.append({
+                    'name': comm['short_name'],
+                    'full_name': comm.get('name', ''),
+                    'code': comm.get('code', '')
+                })
+        communities.sort(key=lambda x: x['name'].lower())
+        return jsonify({
+            'communities': communities,
+            'count': len(communities)
+        })
+
+
+@app.route('/api/suggestions')
+def api_suggestions():
+    """Return spelling suggestions for a query that had no results."""
+    query = request.args.get('q', '').strip()
+
+    if not query:
+        return jsonify({'suggestions': []})
+
+    suggestions = get_community_suggestions(query)
+    return jsonify({
+        'query': query,
+        'suggestions': suggestions
+    })
+
+
 @app.route('/api/unified-search')
 def unified_search():
     """
@@ -1265,6 +1440,21 @@ def unified_search():
             ai_result = extract_answer_with_claude(query, result['documents'], community)
             if ai_result:
                 result['ai_answer'] = ai_result
+
+        # If no documents found and query looks like community name, suggest alternatives
+        if not result['documents'] and community:
+            suggestions = get_community_suggestions(community)
+            if suggestions:
+                result['community_suggestions'] = suggestions
+
+    # Also add suggestions if no results at all
+    if not result.get('homeowners') and not result.get('documents'):
+        # Extract what looks like community name from query
+        words = query.split()
+        potential_community = ' '.join(words[-2:]) if len(words) >= 2 else query
+        suggestions = get_community_suggestions(potential_community)
+        if suggestions:
+            result['community_suggestions'] = suggestions
 
     return jsonify(result)
 
