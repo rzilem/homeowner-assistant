@@ -168,6 +168,39 @@ def is_excluded_community(community_name):
     """Check if a community should be excluded (i.e., NOT in active list)."""
     return not is_active_community(community_name)
 
+
+def normalize_community_name(name):
+    """
+    Normalize community name for Azure Search filtering.
+    Removes common suffixes like HOA, Inc, Association, etc.
+    """
+    if not name:
+        return ''
+    name = name.lower().strip()
+
+    # Remove common suffixes (order matters - longer first)
+    suffixes_to_remove = [
+        ' homeowners association', ' home owners association',
+        ' property owners association', ' condominium association',
+        ' owners association', ' community association',
+        ' association', ' homeowners', ' home owners',
+        ' property owners', ' condominium', ' condominiums',
+        ' community', ' master', ' hoa', ' poa', ' coa',
+        ', inc.', ', inc', ' inc.', ' inc'
+    ]
+    for suffix in suffixes_to_remove:
+        if name.endswith(suffix):
+            name = name[:-len(suffix)]
+
+    # Remove special characters but keep spaces
+    name = re.sub(r'[^\w\s]', '', name)
+
+    # Normalize whitespace
+    name = ' '.join(name.split())
+
+    return name.strip()
+
+
 COLUMNS = [
     'cr258_owner_name', 'cr258_accountnumber', 'cr258_property_address',
     'cr258_assoc_name', 'cr258_balance', 'cr258_creditbalance',
@@ -660,23 +693,44 @@ def search_azure_documents(query, community=None, top=10):
 
     url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{AZURE_SEARCH_INDEX}/docs/search?api-version=2024-05-01-preview"
 
-    # Build search query
-    search_text = query
-    if community:
-        search_text = f"{query} AND \"{community}\""
+    # Expand pet policy queries with related terms
+    expanded_query = query
+    pet_keywords = ['pet', 'pets', 'dog', 'dogs', 'cat', 'cats', 'animal', 'animals']
+    if any(kw in query.lower() for kw in pet_keywords):
+        # Add related terms for better pet policy matching
+        expanded_query = f"{query} pets animals breed leash aggressive weight limit"
+        logger.info(f"Expanded pet query: {expanded_query}")
 
     # Use simple search (semantic quota exhausted)
     # searchMode: "any" allows natural language queries to work better
     payload = {
-        "search": search_text,
+        "search": expanded_query,
         "queryType": "simple",
         "searchMode": "any",
         "top": top,
-        "select": "title,file_name,file_path,web_url,chunk_text,community_name,document_type",
-        "highlight": "chunk_text,content",
+        "count": True,
+        "select": "file_name,file_path,web_url,chunk_text,community_name,document_type",
+        "highlight": "chunk_text",
         "highlightPreTag": "<mark>",
         "highlightPostTag": "</mark>"
     }
+
+    # Build OData filters for community and archive exclusion
+    filters = []
+
+    # Always exclude Archive folders - outdated documents
+    filters.append("not search.ismatch('Archive', 'file_path')")
+
+    # Filter by community using normalized name matching
+    if community:
+        normalized = normalize_community_name(community)
+        if normalized:
+            # Use search.ismatch for fuzzy community filtering
+            filters.append(f"search.ismatch('{normalized}*', 'community_name')")
+            logger.info(f"Community filter: '{community}' -> normalized: '{normalized}'")
+
+    if filters:
+        payload["filter"] = " and ".join(filters)
 
     headers = {
         "Content-Type": "application/json",
@@ -684,7 +738,8 @@ def search_azure_documents(query, community=None, top=10):
     }
 
     try:
-        logger.info(f"Azure Search query: {search_text}")
+        filter_str = payload.get('filter', 'none')
+        logger.info(f"Azure Search: query='{expanded_query}', community='{community}', filter='{filter_str}'")
         resp = requests.post(url, json=payload, headers=headers, timeout=15)
         if resp.status_code == 200:
             data = resp.json()
@@ -790,10 +845,10 @@ def search_azure_documents(query, community=None, top=10):
                 'count': len(filtered_results)
             }
         else:
-            logger.error(f"Azure Search failed: {resp.status_code} - {resp.text[:500]}")
+            logger.error(f"Azure Search failed: status={resp.status_code}, query='{query}', community='{community}', response={resp.text[:500]}")
             return {'documents': [], 'answers': [], 'count': 0, 'error': resp.text[:200]}
     except Exception as e:
-        logger.error(f"Azure Search request failed: {e}")
+        logger.error(f"Azure Search request failed: query='{query}', community='{community}', error={e}")
         return {'documents': [], 'answers': [], 'count': 0, 'error': str(e)}
 
 
