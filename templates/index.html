@@ -833,6 +833,7 @@
         .badge-60days { background: var(--danger); color: white; }
         .badge-30days { background: var(--warning); color: white; }
         .badge-board-member { background: #7c3aed; color: white; }
+        .badge-new-owner { background: #0891b2; color: white; }
 
         /* ============================================
            ACCOUNT LEDGER STYLES
@@ -923,25 +924,26 @@
         .ledger-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             border: 1px solid var(--gray-200);
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius);
             overflow: hidden;
+            background: white;
         }
 
         .ledger-table thead {
-            background: var(--gray-100);
+            background: linear-gradient(to bottom, var(--gray-100), var(--gray-50));
         }
 
         .ledger-table th {
-            padding: 0.5rem 0.75rem;
+            padding: 0.75rem 1rem;
             text-align: left;
-            font-weight: 600;
-            color: var(--gray-700);
-            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--gray-200);
+            letter-spacing: 0.08em;
+            border-bottom: 2px solid var(--gray-300);
         }
 
         .ledger-table th:nth-child(2),
@@ -951,20 +953,22 @@
         }
 
         .ledger-table td {
-            padding: 0.5rem 0.75rem;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--gray-100);
             color: var(--gray-700);
+            font-weight: 500;
         }
 
         .ledger-table td:nth-child(2),
         .ledger-table td:nth-child(3),
         .ledger-table td:nth-child(4) {
             text-align: right;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
         }
 
         .ledger-table tbody tr:hover {
-            background: var(--gray-50);
+            background: var(--primary-light);
         }
 
         .ledger-table tbody tr:last-child td {
@@ -973,10 +977,13 @@
 
         .ledger-date {
             white-space: nowrap;
+            font-weight: 600;
+            color: var(--gray-800);
         }
 
         .ledger-amount {
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.95rem;
         }
 
         .ledger-amount.charge {
@@ -985,11 +992,13 @@
 
         .ledger-amount.payment {
             color: var(--success);
+            font-weight: 700;
         }
 
         .ledger-balance {
-            font-weight: 600;
-            color: var(--gray-800);
+            font-weight: 700;
+            color: var(--gray-900);
+            font-size: 0.95rem;
         }
 
         .ledger-loading {
@@ -1391,23 +1400,6 @@
             color: var(--gray-600);
         }
 
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 1.5rem;
-            color: var(--gray-500);
-            font-size: 0.8rem;
-        }
-
-        .footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
         /* User Menu */
         .user-menu {
             display: flex;
@@ -1585,11 +1577,6 @@
             <div id="resultsContent"></div>
         </div>
     </div>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <p>PS Property Management &bull; Serving Central Texas communities since 1987 &bull; <a href="tel:512-251-6122">512-251-6122</a></p>
-    </footer>
 
     <script>
         // State
@@ -1946,6 +1933,12 @@
                 boardMemberBadge = '<span class="status-badge badge-board-member"><i class="fas fa-star"></i> BOARD MEMBER</span>';
             }
 
+            // New owner badge (settled within 90 days)
+            let newOwnerBadge = '';
+            if (h.is_new_owner) {
+                newOwnerBadge = '<span class="status-badge badge-new-owner"><i class="fas fa-user-plus"></i> NEW OWNER</span>';
+            }
+
             let statusBadge = '';
             if (isAttorney) {
                 statusBadge = '<span class="status-badge badge-attorney">ATTORNEY</span>';
@@ -2035,7 +2028,7 @@
                         <div>
                             <div class="card-name">${escapeHtml(h.owner_name)}</div>
                             <div class="card-community">${escapeHtml(h.community)}</div>
-                            ${boardMemberBadge}${statusBadge}
+                            ${boardMemberBadge}${newOwnerBadge}${statusBadge}
                         </div>
                         ${balanceHeaderHtml}
                     </div>

@@ -475,6 +475,22 @@ def format_homeowner(rec):
         except:
             last_synced_display = modified_on
 
+    # === SMART TAGS FOR CUSTOMER SERVICE ===
+    from datetime import datetime, timedelta
+    now = datetime.now()
+
+    tenant_name = rec.get('cr258_tenantname') or ''
+
+    # Is this a new owner (settled within 90 days)?
+    is_new_owner = False
+    settled_date = rec.get('cr258_settleddate')
+    if settled_date:
+        try:
+            settled_dt = datetime.fromisoformat(settled_date.replace('Z', '+00:00'))
+            is_new_owner = (now - settled_dt.replace(tzinfo=None)).days <= 90
+        except:
+            pass
+
     return {
         'owner_name': rec.get('cr258_owner_name', 'Unknown'),
         'property_address': rec.get('cr258_property_address', 'N/A'),
@@ -491,12 +507,14 @@ def format_homeowner(rec):
         'email': rec.get('cr258_primaryemail') or 'N/A',
         'all_phones': rec.get('cr258_allphones') or None,
         'all_emails': rec.get('cr258_allemails') or None,
-        'tenant_name': rec.get('cr258_tenantname') or None,
+        'tenant_name': tenant_name or None,
         'unit_lot': unit_lot,
         'tags': tags,
         'last_payment': last_payment,
         'vantaca_url': rec.get('cr258_vantacaurl') or None,
+        # Smart tags for customer service
         'is_board_member': rec.get('cr258_boardmember') == True or rec.get('cr258_boardmember') == 'Yes' or rec.get('cr258_boardmember') == 1 or 'Board' in tags,
+        'is_new_owner': is_new_owner,
         'last_synced': last_synced,
         'last_synced_display': last_synced_display
     }
