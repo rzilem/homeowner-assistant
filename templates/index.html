@@ -167,9 +167,10 @@
         .hero p {
             font-size: 0.95rem;
             color: var(--gray-500);
-            max-width: 650px;
+            max-width: 800px;
             margin: 0 auto;
             line-height: 1.5;
+            white-space: nowrap;
         }
 
         /* Search Container */
@@ -383,10 +384,10 @@
             letter-spacing: 0.03em;
         }
 
-        /* Results Grid */
+        /* Results Grid - Full width single column */
         .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 1rem;
         }
 
@@ -1455,7 +1456,7 @@
         @media (max-width: 768px) {
             .hero { padding: 1rem 1rem 0.75rem; }
             .hero h1 { font-size: 1.75rem; }
-            .hero p { font-size: 0.875rem; }
+            .hero p { font-size: 0.875rem; white-space: normal; }
             .search-container, .results-container { padding: 1rem; }
             .search-mode-toggle { flex-wrap: wrap; }
             .mode-btn { flex: 1; justify-content: center; min-width: 80px; }
@@ -1748,7 +1749,8 @@
                 </div>
             `;
 
-            if (hasAiAnswer) {
+            // Only show AI answer for document/combined searches, not for homeowner name/phone/address searches
+            if (hasAiAnswer && data.detected_type !== 'homeowner') {
                 html += renderAiAnswerCard(data.ai_answer, data.community_detected, data.documents, data.query);
             }
 
@@ -2170,11 +2172,13 @@
             const container = document.getElementById(containerId);
             const icon = btn.querySelector('.toggle-icon');
 
-            if (container.classList.contains('open')) {
-                container.classList.remove('open');
+            if (container.classList.contains('show')) {
+                container.classList.remove('show');
+                btn.classList.remove('active');
                 icon.style.transform = 'rotate(0deg)';
             } else {
-                container.classList.add('open');
+                container.classList.add('show');
+                btn.classList.add('active');
                 icon.style.transform = 'rotate(180deg)';
 
                 // Load ledger data if not already loaded
