@@ -1862,11 +1862,14 @@
         function selectAutocompleteItem(name) {
             searchInput.value = name;
             hideAutocomplete();
-            // Auto-search after selection
-            performSearch();
+            // Focus input so user can continue typing or hit Enter to search
+            searchInput.focus();
+            // Move cursor to end of input
+            searchInput.setSelectionRange(name.length, name.length);
         }
 
-        // "Did You Mean?" click handler
+        // "Did You Mean?" click handler - this one SHOULD auto-search
+        // since user is correcting a failed search
         function searchSuggestion(suggestion) {
             searchInput.value = suggestion;
             performSearch();
