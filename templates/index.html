@@ -829,6 +829,192 @@
         .badge-collections { background: #7C2D12; color: white; }
         .badge-60days { background: var(--danger); color: white; }
         .badge-30days { background: var(--warning); color: white; }
+        .badge-board-member { background: #7c3aed; color: white; }
+
+        /* ============================================
+           ACCOUNT LEDGER STYLES
+           ============================================ */
+        .ledger-section {
+            margin-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+            padding-top: 1rem;
+        }
+
+        .ledger-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            color: var(--gray-700);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            width: 100%;
+            justify-content: center;
+            font-family: inherit;
+        }
+
+        .ledger-toggle:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-300);
+        }
+
+        .ledger-toggle.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .ledger-toggle i {
+            transition: transform 0.2s;
+        }
+
+        .ledger-toggle.active i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .ledger-container {
+            display: none;
+            margin-top: 1rem;
+            overflow: hidden;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .ledger-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 1000px;
+            }
+        }
+
+        .ledger-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .ledger-title {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+
+        .ledger-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .ledger-table thead {
+            background: var(--gray-100);
+        }
+
+        .ledger-table th {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .ledger-table th:nth-child(2),
+        .ledger-table th:nth-child(3),
+        .ledger-table th:nth-child(4) {
+            text-align: right;
+        }
+
+        .ledger-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .ledger-table td:nth-child(2),
+        .ledger-table td:nth-child(3),
+        .ledger-table td:nth-child(4) {
+            text-align: right;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .ledger-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .ledger-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .ledger-date {
+            white-space: nowrap;
+        }
+
+        .ledger-amount {
+            font-weight: 500;
+        }
+
+        .ledger-amount.charge {
+            color: var(--danger);
+        }
+
+        .ledger-amount.payment {
+            color: var(--success);
+        }
+
+        .ledger-balance {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .ledger-loading {
+            padding: 2rem;
+            text-align: center;
+            color: var(--gray-500);
+        }
+
+        .ledger-loading i {
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        .ledger-empty {
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+
+        .ledger-error {
+            padding: 1rem;
+            text-align: center;
+            color: var(--danger);
+            background: var(--danger-light);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+        }
 
         .card-tags {
             display: flex;
@@ -1748,6 +1934,12 @@
                 cardClass += ' status-credit';
             }
 
+            // Board member badge (shows alongside other badges)
+            let boardMemberBadge = '';
+            if (h.is_board_member) {
+                boardMemberBadge = '<span class="status-badge badge-board-member"><i class="fas fa-star"></i> BOARD MEMBER</span>';
+            }
+
             let statusBadge = '';
             if (isAttorney) {
                 statusBadge = '<span class="status-badge badge-attorney">ATTORNEY</span>';
@@ -1837,7 +2029,7 @@
                         <div>
                             <div class="card-name">${escapeHtml(h.owner_name)}</div>
                             <div class="card-community">${escapeHtml(h.community)}</div>
-                            ${statusBadge}
+                            ${boardMemberBadge}${statusBadge}
                         </div>
                         ${balanceHeaderHtml}
                     </div>
@@ -1878,6 +2070,21 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Account Ledger Section -->
+                    ${!isAttorney ? `
+                    <div class="ledger-section">
+                        <button class="ledger-toggle" data-account="${escapeHtml(h.account_number)}" onclick="toggleLedger(this)">
+                            <i class="fas fa-receipt"></i>
+                            <span>View Account Ledger</span>
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </button>
+                        <div class="ledger-container" id="ledger-${escapeHtml(h.account_number).replace(/[^a-zA-Z0-9]/g, '')}">
+                            <!-- Ledger content loads here -->
+                        </div>
+                    </div>
+                    ` : ''}
+
                     <div class="card-actions">
                         ${h.vantaca_url ? `
                             <a href="${escapeHtml(h.vantaca_url)}" target="_blank" class="btn btn-primary">
@@ -1946,6 +2153,108 @@
             navigator.clipboard.writeText(text).then(() => {
                 console.log('Copied:', text);
             });
+        }
+
+        // ========================================
+        // Account Ledger Functions
+        // ========================================
+        const ledgerCache = {};
+
+        function toggleLedger(btn) {
+            const account = btn.dataset.account;
+            const containerId = 'ledger-' + account.replace(/[^a-zA-Z0-9]/g, '');
+            const container = document.getElementById(containerId);
+            const icon = btn.querySelector('.toggle-icon');
+
+            if (container.classList.contains('open')) {
+                container.classList.remove('open');
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                container.classList.add('open');
+                icon.style.transform = 'rotate(180deg)';
+
+                // Load ledger data if not already loaded
+                if (!ledgerCache[account]) {
+                    loadLedger(account, container);
+                }
+            }
+        }
+
+        async function loadLedger(account, container) {
+            container.innerHTML = '<div class="ledger-loading"><i class="fas fa-spinner fa-spin"></i> Loading ledger...</div>';
+
+            try {
+                const response = await fetch(`/api/history?account=${encodeURIComponent(account)}&limit=15`);
+                const data = await response.json();
+
+                if (data.error) {
+                    container.innerHTML = `<div class="ledger-error"><i class="fas fa-exclamation-triangle"></i> ${data.error}</div>`;
+                    return;
+                }
+
+                if (!data.history || data.history.length === 0) {
+                    container.innerHTML = '<div class="ledger-empty"><i class="fas fa-info-circle"></i> No recent transactions found</div>';
+                    return;
+                }
+
+                ledgerCache[account] = data.history;
+                renderLedgerTable(data.history, container);
+
+            } catch (err) {
+                container.innerHTML = `<div class="ledger-error"><i class="fas fa-exclamation-triangle"></i> Failed to load ledger</div>`;
+                console.error('Ledger load error:', err);
+            }
+        }
+
+        function renderLedgerTable(history, container) {
+            let html = `
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th class="amount">Charge</th>
+                            <th class="amount">Payment</th>
+                            <th class="amount">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // History should already be sorted with most recent first from the API
+            history.forEach(item => {
+                const date = item.date || 'N/A';
+                const desc = item.description || 'N/A';
+                const charge = item.charge ? formatCurrency(item.charge) : '-';
+                const payment = item.payment ? formatCurrency(item.payment) : '-';
+                const balance = item.running_balance !== null ? formatCurrency(item.running_balance) : '-';
+
+                const balanceClass = item.running_balance < 0 ? 'credit' : (item.running_balance > 0 ? 'debit' : '');
+
+                html += `
+                    <tr>
+                        <td class="date">${escapeHtml(date)}</td>
+                        <td class="description">${escapeHtml(desc)}</td>
+                        <td class="amount charge">${charge !== '-' ? charge : '<span class="dash">-</span>'}</td>
+                        <td class="amount payment">${payment !== '-' ? payment : '<span class="dash">-</span>'}</td>
+                        <td class="amount balance ${balanceClass}">${balance}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function formatCurrency(value) {
+            if (value === null || value === undefined) return '-';
+            const num = parseFloat(value);
+            if (isNaN(num)) return '-';
+            return '$' + Math.abs(num).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
         // Copy homeowner info as formatted HTML for emails

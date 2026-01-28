@@ -28,7 +28,20 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', str(uuid.uuid4()))
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+# Cookie settings for Teams iframe embedding
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 Session(app)
+
+
+@app.after_request
+def add_security_headers(response):
+    """Add headers to allow Teams to embed the app in an iframe."""
+    # Allow embedding in Microsoft Teams
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.office.com https://*.microsoft.com"
+    # Remove X-Frame-Options if set (CSP frame-ancestors takes precedence)
+    response.headers.pop('X-Frame-Options', None)
+    return response
 
 # =============================================================================
 # MICROSOFT AUTH CONFIGURATION
@@ -164,6 +177,8 @@ COLUMNS = [
     'cr258_allphones', 'cr258_allemails', 'cr258_tenantname',
     'cr258_collprovider', 'cr258_lotnumber', 'cr258_unitnumber',
     'cr258_tags', 'cr258_lastpaymentdate', 'cr258_lastpaymentamount',
+    # Board member indicator
+    'cr258_boardmember',
     # Sync timestamp
     'modifiedon'
 ]
@@ -481,6 +496,7 @@ def format_homeowner(rec):
         'tags': tags,
         'last_payment': last_payment,
         'vantaca_url': rec.get('cr258_vantacaurl') or None,
+        'is_board_member': rec.get('cr258_boardmember') == True or rec.get('cr258_boardmember') == 'Yes' or rec.get('cr258_boardmember') == 1,
         'last_synced': last_synced,
         'last_synced_display': last_synced_display
     }
@@ -631,14 +647,15 @@ def search_azure_documents(query, community=None, top=10):
     if community:
         search_text = f"{query} AND \"{community}\""
 
+    # Use simple search (semantic quota exhausted)
+    # searchMode: "any" allows natural language queries to work better
     payload = {
         "search": search_text,
-        "queryType": "semantic",
-        "semanticConfiguration": "semantic-config",
+        "queryType": "simple",
+        "searchMode": "any",
         "top": top,
         "select": "title,file_name,file_path,web_url,chunk_text,community_name,document_type",
-        "captions": "extractive|highlight-true",
-        "answers": "extractive|count-3",
+        "highlight": "chunk_text,content",
         "highlightPreTag": "<mark>",
         "highlightPostTag": "</mark>"
     }
@@ -1024,9 +1041,11 @@ def auth_callback():
                 }
                 logger.info(f"User logged in: {email}")
 
-                # Redirect to original URL or home
+                # Get the redirect URL
                 next_url = session.pop('next_url', url_for('index'))
-                return redirect(next_url)
+
+                # Use auth_success template to handle popup/iframe scenarios
+                return render_template('auth_success.html', user=session['user'], next_url=next_url)
             else:
                 logger.error(f"Graph API error: {graph_resp.status_code}")
                 return render_template('login.html', error="Failed to get user information")
