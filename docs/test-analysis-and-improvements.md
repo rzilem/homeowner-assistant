@@ -401,4 +401,109 @@ The testing revealed that **the search works perfectly when documents exist**. T
 ---
 
 *Generated: 2026-01-22*
+*Updated: 2026-01-28*
 *Based on: 50+ test scenarios, code review of app.py*
+
+---
+
+## UPDATE 2026-01-28: Document Coverage Audit
+
+A comprehensive document coverage audit has been completed. See:
+
+- **Full Audit Report:** `docs/document-coverage-audit-2026-01-28.md`
+- **Document Templates:** `docs/templates/` (6 templates created)
+
+### Key Findings:
+
+| Metric | Value |
+|--------|-------|
+| Total Tests | 100 |
+| Real Answers Found | 59 (59%) |
+| Not Found Answers | 41 (41%) |
+| Pool Rules Coverage | 100% (best) |
+| Parking Rules Coverage | 40% (critical gap) |
+| Trash/Recycling Coverage | 40% (critical gap) |
+
+### Templates Created:
+
+1. **Pet Policy** - 60% of communities missing
+2. **Parking Rules** - 60% of communities missing (CRITICAL)
+3. **Rental Restrictions** - 60% of communities missing
+4. **ARC Guidelines** - 50% of communities missing
+5. **Fence Guidelines** - 40% of communities missing
+6. **Trash/Recycling Rules** - 70% of communities missing (CRITICAL)
+
+### Priority Communities (Worst Coverage):
+
+1. Mountain Creek - 30% coverage (needs 7 docs)
+2. Chandler Creek - 40% coverage (needs 6 docs)
+3. Brushy Creek - 40% coverage (needs 6 docs)
+
+### Estimated Impact:
+
+Creating all missing documents would improve real answer rate from **59% to ~95%**.
+
+---
+
+## UPDATE 2026-01-28: Optimized Prompt Library
+
+A comprehensive prompt optimization has been implemented. See:
+
+- **Documentation:** `docs/optimized-prompt-library.md`
+- **Python Module:** `src/optimized_extraction.py`
+- **Phone AI Module:** `phone-ai-agent/mcp-servers/utils/optimized-extraction.js`
+
+### Key Improvements Delivered:
+
+| Improvement | Description | Expected Impact |
+|-------------|-------------|-----------------|
+| **Confidence Scoring** | AI rates confidence as high/medium/low | Users know when to trust answers |
+| **Concise Answers** | Strict 30-word limit in prompts | Reduced verbosity by 60%+ |
+| **Required Quotes** | Must cite exact text from document | Eliminates hallucination |
+| **Source Attribution** | Document name + section number | Clear provenance |
+| **Follow-up Suggestions** | 2-3 related questions per response | Better user experience |
+| **Category-specific Fallbacks** | Tailored "not found" responses | Helpful next steps |
+| **Multi-document Synthesis** | Combine info from multiple docs | Comprehensive answers |
+
+### How to Use:
+
+**Manager Wizard (Python):**
+```python
+from src.optimized_extraction import extract_answer_with_claude_v2
+
+result = extract_answer_with_claude_v2(
+    query="What is the fence height limit?",
+    documents=search_results,
+    community="Falcon Pointe"
+)
+
+print(result['answer'])       # "6 feet maximum height."
+print(result['confidence'])   # "high"
+print(result['quote'])        # "fences shall not exceed six (6) feet"
+print(result['follow_up_questions'])  # ["What materials are approved?", ...]
+```
+
+**Phone AI Agent (JavaScript):**
+```javascript
+import { extractAnswerOptimized } from './utils/optimized-extraction.js';
+
+const result = await extractAnswerOptimized(
+    "What's the fence height limit?",
+    documentContent,
+    "Falcon Pointe CC&Rs.pdf"
+);
+
+// result.answer = "Fences can be up to 6 feet tall."
+// result.confidence = "high"
+// result.hasDirectAnswer = true
+// result.followUpQuestions = ["What materials are approved?", ...]
+```
+
+### Metrics to Track Post-Implementation:
+
+| Metric | Before | Target |
+|--------|--------|--------|
+| Found Rate | 59% | 75%+ |
+| High Confidence Rate | Unknown | 60%+ |
+| Avg Answer Length | ~80 words | ~25 words |
+| Has Quote Rate | ~30% | 90%+ |
