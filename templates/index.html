@@ -350,8 +350,8 @@
 
         /* Did You Mean Suggestions */
         .did-you-mean {
-            background: var(--warning-light);
-            border: 1px solid rgba(145, 89, 7, 0.2);
+            background: var(--primary-light);
+            border: 1px solid rgba(10, 102, 194, 0.15);
             border-radius: var(--radius);
             padding: 1rem;
             margin-bottom: 1rem;
@@ -362,7 +362,7 @@
         }
 
         .did-you-mean-icon {
-            color: var(--warning);
+            color: var(--primary);
             font-size: 1.25rem;
         }
 
@@ -1962,7 +1962,7 @@
                 if (hasSuggestions) {
                     emptyHtml += `
                         <div class="did-you-mean">
-                            <i class="fas fa-lightbulb did-you-mean-icon"></i>
+                            <i class="fas fa-wand-magic-sparkles did-you-mean-icon"></i>
                             <span class="did-you-mean-text">Did you mean:</span>
                             ${data.community_suggestions.map(s => `
                                 <button class="did-you-mean-suggestion" onclick="searchSuggestion('${s.replace(/'/g, "\\'")}')">
@@ -1991,7 +1991,7 @@
             if (hasSuggestions && !hasHomeowners) {
                 suggestionsHtml = `
                     <div class="did-you-mean">
-                        <i class="fas fa-lightbulb did-you-mean-icon"></i>
+                        <i class="fas fa-wand-magic-sparkles did-you-mean-icon"></i>
                         <span class="did-you-mean-text">Looking for a different community?</span>
                         ${data.community_suggestions.map(s => `
                             <button class="did-you-mean-suggestion" onclick="searchSuggestion('${s.replace(/'/g, "\\'")}')">
