@@ -153,7 +153,7 @@
         /* Hero Section */
         .hero {
             text-align: center;
-            padding: 1.5rem 1rem 1rem;
+            padding: 0.75rem 1rem 0.5rem;
         }
 
         .hero h1 {
@@ -1778,6 +1778,451 @@
             color: var(--danger);
         }
 
+        /* ============================================
+           GAMIFICATION ANIMATIONS
+           ============================================ */
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+            50% { opacity: 1; transform: scale(1) rotate(180deg); }
+        }
+        @keyframes wizardFlyIn {
+            0% { transform: translateX(200%) rotate(15deg) scale(0.3); opacity: 0; }
+            60% { transform: translateX(-10%) rotate(-5deg) scale(1.1); opacity: 1; }
+            80% { transform: translateX(3%) rotate(2deg) scale(0.95); }
+            100% { transform: translateX(0) rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes portalOpen {
+            0% { transform: scale(0); border-radius: 50%; opacity: 0; }
+            50% { transform: scale(1.1); border-radius: 20%; opacity: 0.8; }
+            100% { transform: scale(1); border-radius: 20px; opacity: 1; }
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(-100vh) translateX(var(--drift-x, 50px)); opacity: 0; }
+        }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(139, 92, 246, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.3); }
+        }
+        @keyframes bubbleIn {
+            0% { transform: scale(0) translateY(10px); opacity: 0; }
+            60% { transform: scale(1.05) translateY(-2px); }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes badgeReveal {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes cosmicFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        /* ============================================
+           GAMIFICATION ELEMENTS
+           ============================================ */
+
+        /* Sparkle on logo (5 searches) */
+        .logo-sparkle .logo-icon {
+            animation: glowPulse 2s ease-in-out infinite;
+            position: relative;
+        }
+        .logo-sparkle .logo-icon::after {
+            content: '\f005';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            font-size: 10px;
+            color: #fbbf24;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        /* Wizard avatar (10+ searches) */
+        .wizard-avatar-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .wizard-avatar-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .wizard-avatar-container img {
+            width: 90px;
+            height: auto;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+            animation: cosmicFloat 3s ease-in-out infinite;
+            cursor: pointer;
+        }
+
+        /* Speech bubble */
+        .wizard-speech-bubble {
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-size: 0.82rem;
+            color: var(--gray-700);
+            max-width: 260px;
+            line-height: 1.5;
+            opacity: 0;
+            transform: scale(0);
+            pointer-events: none;
+            margin-bottom: 10px;
+        }
+        .wizard-speech-bubble.visible {
+            opacity: 1;
+            transform: scale(1);
+            animation: bubbleIn 0.4s ease-out;
+            pointer-events: auto;
+        }
+        .wizard-speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            right: 30px;
+            width: 0; height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid white;
+        }
+
+        /* Milestone overlay */
+        .milestone-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .milestone-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .milestone-card {
+            background: linear-gradient(135deg, #1a1145 0%, #0d1b3e 100%);
+            border: 2px solid rgba(251, 191, 36, 0.5);
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            text-align: center;
+            max-width: 420px;
+            animation: portalOpen 0.6s ease-out;
+            box-shadow: 0 0 60px rgba(139, 92, 246, 0.4), 0 0 120px rgba(59, 130, 246, 0.2);
+        }
+        .milestone-badge {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: badgeReveal 0.8s ease-out 0.3s both;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+        }
+        .milestone-badge i {
+            font-size: 2.5rem;
+            color: #fbbf24;
+        }
+        .milestone-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+        }
+        .milestone-subtitle {
+            font-size: 0.95rem;
+            color: rgba(226, 217, 243, 0.8);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .milestone-dismiss {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+        .milestone-dismiss:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+        }
+
+        /* Wizard toggle button (header) */
+        .wizard-toggle {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .wizard-toggle.unlocked { display: inline-flex; }
+        .wizard-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        .wizard-toggle.active {
+            background: linear-gradient(135deg, #fbbf24, #d97706);
+            color: #1a1145;
+        }
+
+        /* Voice mode toggle */
+        .voice-toggle {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .voice-toggle.unlocked { display: inline-flex; }
+        .voice-toggle:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
+        .voice-toggle.active { background: linear-gradient(135deg, #fbbf24, #d97706); color: #1a1145; }
+
+        /* Rank display */
+        .rank-display {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: var(--radius-full);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #8b5cf6;
+        }
+        .rank-display.visible { display: inline-flex; }
+
+        /* Progress bar (search count) */
+        .search-progress {
+            display: none;
+            height: 3px;
+            background: var(--gray-200);
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .search-progress.visible { display: block; }
+        .search-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #6d28d9);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Particles container */
+        .particles-container {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            bottom: -20px;
+            border-radius: 50%;
+            animation: floatParticle var(--duration, 8s) linear infinite;
+            animation-delay: var(--delay, 0s);
+        }
+
+        /* Search orb (wizard mode) */
+        .search-orb {
+            display: none;
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #60a5fa 0%, #3b82f6 50%, transparent 70%);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+            animation: glowPulse 2s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        /* ============================================
+           WIZARD MODE THEME OVERRIDES
+           ============================================ */
+        body { transition: background 0.8s ease, color 0.5s ease; }
+        .header, .search-container, .results-container,
+        .homeowner-card, .document-card, .mode-btn,
+        .hint-chip, .quick-action-btn, .search-input,
+        .search-btn, .logo-icon { transition: all 0.5s ease; }
+
+        body.wizard-mode {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1145 40%, #0d1b3e 100%);
+            background-image: url('https://storage.googleapis.com/pspm-community-images/wizard/wizard-bg.png');
+            background-size: cover;
+            background-attachment: fixed;
+            background-blend-mode: overlay;
+            color: #e2d9f3;
+        }
+        body.wizard-mode .header {
+            background: rgba(10, 14, 39, 0.95);
+            border-bottom-color: rgba(139, 92, 246, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        body.wizard-mode .logo-icon {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+        body.wizard-mode .logo-title { color: #e2d9f3; text-shadow: 0 0 10px rgba(139,92,246,0.3); }
+        body.wizard-mode .logo-subtitle { color: rgba(226,217,243,0.5); }
+        body.wizard-mode .hero h1 {
+            color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251,191,36,0.3);
+        }
+        body.wizard-mode .hero p { color: rgba(226,217,243,0.7); }
+        body.wizard-mode .search-container {
+            background: rgba(15, 10, 50, 0.9);
+            border-color: rgba(139, 92, 246, 0.3);
+            box-shadow: 0 0 20px rgba(59,130,246,0.2), 0 0 60px rgba(139,92,246,0.1);
+        }
+        body.wizard-mode .search-input {
+            background: rgba(10, 14, 39, 0.8);
+            border-color: rgba(139, 92, 246, 0.3);
+            color: #e2d9f3;
+        }
+        body.wizard-mode .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3), 0 0 20px rgba(59,130,246,0.2);
+        }
+        body.wizard-mode .search-input::placeholder { color: rgba(226,217,243,0.35); }
+        body.wizard-mode .search-btn {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            box-shadow: 0 0 15px rgba(139,92,246,0.4);
+        }
+        body.wizard-mode .search-btn:hover {
+            box-shadow: 0 0 25px rgba(139,92,246,0.6);
+        }
+        body.wizard-mode .search-orb { display: block; }
+        body.wizard-mode .search-icon { display: none; }
+        body.wizard-mode .mode-btn {
+            background: rgba(26, 17, 69, 0.6);
+            border-color: rgba(139,92,246,0.3);
+            color: #e2d9f3;
+        }
+        body.wizard-mode .mode-btn.active {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            border-color: #8b5cf6;
+            color: white;
+        }
+        body.wizard-mode .hint-chip {
+            background: rgba(26, 17, 69, 0.6);
+            color: rgba(226,217,243,0.7);
+            border-color: rgba(139,92,246,0.3);
+        }
+        body.wizard-mode .hint-chip:hover {
+            background: rgba(139,92,246,0.2);
+            border-color: #8b5cf6;
+            color: #fbbf24;
+        }
+        body.wizard-mode .quick-action-btn {
+            background: rgba(26, 17, 69, 0.6);
+            border-color: rgba(139,92,246,0.3);
+            color: rgba(226,217,243,0.7);
+        }
+        body.wizard-mode .quick-action-btn:hover {
+            background: rgba(139,92,246,0.2);
+            border-color: #8b5cf6;
+            color: #fbbf24;
+        }
+        body.wizard-mode .results-container {
+            background: rgba(26, 17, 69, 0.85);
+            border-color: rgba(139,92,246,0.3);
+            box-shadow: 0 0 20px rgba(59,130,246,0.2);
+        }
+        body.wizard-mode .results-header { border-bottom-color: rgba(139,92,246,0.2); }
+        body.wizard-mode .results-title { color: #e2d9f3; }
+        body.wizard-mode .section-title { color: #e2d9f3; }
+        body.wizard-mode .section-header { border-bottom-color: rgba(139,92,246,0.2); }
+        body.wizard-mode .homeowner-card {
+            background: rgba(26, 17, 69, 0.7);
+            border-color: rgba(139,92,246,0.3);
+        }
+        body.wizard-mode .homeowner-card:hover {
+            box-shadow: 0 0 20px rgba(139,92,246,0.3);
+            border-color: rgba(139,92,246,0.5);
+        }
+        body.wizard-mode .card-name { color: #e2d9f3; }
+        body.wizard-mode .card-community { color: rgba(226,217,243,0.5); }
+        body.wizard-mode .card-field-label { color: rgba(226,217,243,0.5); }
+        body.wizard-mode .card-field-value { color: #e2d9f3; }
+        body.wizard-mode .document-card {
+            background: rgba(26, 17, 69, 0.7);
+            border-color: rgba(139,92,246,0.3);
+        }
+        body.wizard-mode .ai-answer-card {
+            background: linear-gradient(135deg, rgba(26,17,69,0.9) 0%, rgba(13,27,62,0.9) 100%) !important;
+            border-color: rgba(139,92,246,0.4) !important;
+            border-left-color: #8b5cf6 !important;
+        }
+        body.wizard-mode .ai-answer-title { color: #fbbf24 !important; }
+        body.wizard-mode .ai-main-answer { color: #e2d9f3 !important; }
+        body.wizard-mode .quote-box {
+            background: rgba(10,14,39,0.6) !important;
+            border-color: rgba(139,92,246,0.3) !important;
+        }
+        body.wizard-mode .quote-content { color: rgba(226,217,243,0.8) !important; }
+        body.wizard-mode .status-indicator { background: rgba(5,118,66,0.2); }
+        body.wizard-mode .user-name { color: #e2d9f3; }
+        body.wizard-mode .user-avatar { background: #8b5cf6; }
+        body.wizard-mode .detected-badge { background: rgba(139,92,246,0.2); color: #a78bfa; border-color: rgba(139,92,246,0.3); }
+        body.wizard-mode .autocomplete-dropdown { background: rgba(15,10,50,0.98); border-color: rgba(139,92,246,0.3); }
+        body.wizard-mode .autocomplete-item { color: #e2d9f3; }
+        body.wizard-mode .autocomplete-item:hover { background: rgba(139,92,246,0.2); }
+        body.wizard-mode .wizard-speech-bubble {
+            background: rgba(26,17,69,0.95);
+            color: #e2d9f3;
+            border: 1px solid rgba(139,92,246,0.3);
+        }
+        body.wizard-mode .wizard-speech-bubble::after { border-top-color: rgba(26,17,69,0.95); }
+        body.wizard-mode .rank-display { background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.3); color: #a78bfa; }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero { padding: 1rem 1rem 0.75rem; }
@@ -1812,7 +2257,19 @@
                     <!-- Build: v4-inline-preview -->
                 </div>
             </a>
-            <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="rank-display" id="rankDisplay">
+                    <i class="fas fa-hat-wizard" id="rankIcon"></i>
+                    <span id="rankTitle"></span>
+                </div>
+                <button class="wizard-toggle" id="wizardToggle" onclick="toggleWizardMode()" title="Toggle Wizard Mode">
+                    <i class="fas fa-hat-wizard"></i>
+                    <span>Wizard Mode</span>
+                </button>
+                <button class="voice-toggle" id="voiceToggle" onclick="toggleVoiceMode()" title="Toggle Voice Mode">
+                    <i class="fas fa-microphone-alt"></i>
+                    <span>Voice</span>
+                </button>
                 <div class="status-indicator" id="statusIndicator">
                     <span class="status-dot"></span>
                     <span id="statusText">Connected</span>
@@ -1871,6 +2328,7 @@
                        placeholder="Search by phone, address, name, or ask a question..."
                        autocomplete="off">
                 <i class="fas fa-search search-icon"></i>
+                <div class="search-orb" id="searchOrb"></div>
                 <button class="search-btn" id="searchBtn">
                     <i class="fas fa-arrow-right"></i>
                     <span>Search</span>
@@ -1941,6 +2399,7 @@
             checkStatus();
             setupEventListeners();
             loadCommunities();
+            initGamification();
         });
 
         // Load all communities for autocomplete
@@ -2157,6 +2616,8 @@
                 }
 
                 renderResults(data);
+                incrementSearchCount();
+                checkEasterEggs(query);
             } catch (error) {
                 showError('Search failed. Please try again.');
                 console.error('Search error:', error);
@@ -3223,6 +3684,531 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // ========================================
+        // GAMIFICATION SYSTEM
+        // ========================================
+
+        const MILESTONES = [
+            { count: 5, title: 'Apprentice', subtitle: 'A subtle spark of magic...', icon: 'fa-hat-wizard', effect: 'sparkle' },
+            { count: 10, title: 'Wizard Revealed', subtitle: 'The Manager Wizard appears!', icon: 'fa-hat-wizard', effect: 'wizardReveal' },
+            { count: 20, title: 'Sage', subtitle: 'The Wizard shares ancient wisdom...', icon: 'fa-scroll', effect: 'sage' },
+            { count: 30, title: 'Archmage', subtitle: 'WIZARD MODE UNLOCKED!', icon: 'fa-crown', effect: 'wizardUnlock' },
+            { count: 50, title: 'Grand Wizard', subtitle: 'The highest honor bestowed upon you!', icon: 'fa-gem', effect: 'grandWizard' },
+            { count: 75, title: 'Legendary', subtitle: 'A secret power awakens...', icon: 'fa-bolt', effect: 'voiceUnlock' }
+        ];
+
+        const WIZARD_TIPS = [
+            "Try searching by phone number for instant homeowner lookup!",
+            "Use community names to find CC&Rs and governing documents.",
+            "Search by address for the most precise results.",
+            "Ask questions like 'fence height in Avalon' for AI-powered answers!",
+            "Account numbers work too - try searching with or without leading zeros.",
+            "Pro tip: Combine community name + topic for laser-focused doc search.",
+            "The ancient scrolls reveal... pet policies are popular searches!",
+            "A wise wizard searches by partial address when exact match fails.",
+            "Did you know? Board member accounts show a special purple badge!",
+            "New owners (< 90 days) get a cyan badge. Welcome them warmly!"
+        ];
+
+        const EASTER_EGG_SEARCHES = {
+            'abracadabra': 'particleBurst',
+            'lumos': 'wizardOn',
+            'nox': 'wizardOff',
+            'expecto patronum': 'patronus',
+            'open sesame': 'portalOpen'
+        };
+
+        // Gamification state
+        let gamificationState = {
+            searchCount: 0,
+            wizardUnlocked: false,
+            wizardActive: false,
+            voiceUnlocked: false,
+            voiceActive: false,
+            shownMilestones: [],
+            currentRank: null
+        };
+
+        function initGamification() {
+            // Load persisted state
+            gamificationState.searchCount = parseInt(localStorage.getItem('mw_search_count') || '0');
+            gamificationState.wizardUnlocked = localStorage.getItem('mw_wizard_unlocked') === 'true';
+            gamificationState.wizardActive = localStorage.getItem('mw_wizard_active') === 'true';
+            gamificationState.voiceUnlocked = localStorage.getItem('mw_voice_unlocked') === 'true';
+            gamificationState.voiceActive = localStorage.getItem('mw_voice_active') === 'true';
+            gamificationState.shownMilestones = JSON.parse(localStorage.getItem('mw_shown_milestones') || '[]');
+
+            // Restore visual state
+            updateRankDisplay();
+
+            if (gamificationState.wizardActive && gamificationState.wizardUnlocked) {
+                document.body.classList.add('wizard-mode');
+                const wizToggle = document.getElementById('wizardToggle');
+                if (wizToggle) wizToggle.style.display = 'flex';
+                const avatar = document.getElementById('wizardAvatar');
+                if (avatar) avatar.style.display = 'block';
+                spawnParticles();
+            }
+
+            if (gamificationState.wizardUnlocked && !gamificationState.wizardActive) {
+                const wizToggle = document.getElementById('wizardToggle');
+                if (wizToggle) wizToggle.style.display = 'flex';
+            }
+
+            if (gamificationState.voiceUnlocked) {
+                const voiceToggle = document.getElementById('voiceToggle');
+                if (voiceToggle) voiceToggle.style.display = 'flex';
+            }
+
+            // Show wizard avatar if past milestone 10
+            if (gamificationState.searchCount >= 10) {
+                const avatar = document.getElementById('wizardAvatar');
+                if (avatar && (gamificationState.wizardActive || gamificationState.searchCount < 30)) {
+                    avatar.style.display = 'block';
+                }
+            }
+
+            // Sparkle effect if past 5 searches
+            if (gamificationState.searchCount >= 5) {
+                addLogoSparkle();
+            }
+        }
+
+        function saveGamificationState() {
+            localStorage.setItem('mw_search_count', gamificationState.searchCount.toString());
+            localStorage.setItem('mw_wizard_unlocked', gamificationState.wizardUnlocked.toString());
+            localStorage.setItem('mw_wizard_active', gamificationState.wizardActive.toString());
+            localStorage.setItem('mw_voice_unlocked', gamificationState.voiceUnlocked.toString());
+            localStorage.setItem('mw_voice_active', gamificationState.voiceActive.toString());
+            localStorage.setItem('mw_shown_milestones', JSON.stringify(gamificationState.shownMilestones));
+        }
+
+        function incrementSearchCount() {
+            gamificationState.searchCount++;
+            saveGamificationState();
+            updateRankDisplay();
+            checkMilestones();
+
+            // Show wizard tip every 5 searches after sage (20+)
+            if (gamificationState.searchCount >= 20 && gamificationState.searchCount % 5 === 0) {
+                setTimeout(() => showRandomWizardTip(), 2000);
+            }
+        }
+
+        function checkMilestones() {
+            for (const milestone of MILESTONES) {
+                if (gamificationState.searchCount >= milestone.count &&
+                    !gamificationState.shownMilestones.includes(milestone.count)) {
+                    gamificationState.shownMilestones.push(milestone.count);
+                    saveGamificationState();
+                    setTimeout(() => showMilestone(milestone), 800);
+                    break;  // Show one at a time
+                }
+            }
+        }
+
+        function showMilestone(milestone) {
+            const overlay = document.getElementById('milestoneOverlay');
+            const badge = document.getElementById('milestoneBadge');
+            const title = document.getElementById('milestoneTitle');
+            const subtitle = document.getElementById('milestoneSubtitle');
+
+            badge.innerHTML = `<i class="fas ${milestone.icon}"></i>`;
+            title.textContent = milestone.title;
+            subtitle.textContent = milestone.subtitle;
+
+            overlay.classList.add('active');
+            playAchievementSound();
+            burstParticles(30);
+
+            // Apply milestone-specific effects
+            applyMilestoneEffect(milestone.effect);
+        }
+
+        function dismissMilestone() {
+            const overlay = document.getElementById('milestoneOverlay');
+            overlay.classList.remove('active');
+        }
+
+        function applyMilestoneEffect(effect) {
+            switch (effect) {
+                case 'sparkle':
+                    addLogoSparkle();
+                    break;
+                case 'wizardReveal':
+                    revealWizard();
+                    break;
+                case 'sage':
+                    // Wizard starts giving tips (handled in incrementSearchCount)
+                    const avatar = document.getElementById('wizardAvatar');
+                    if (avatar) avatar.style.display = 'block';
+                    break;
+                case 'wizardUnlock':
+                    unlockWizardMode();
+                    break;
+                case 'grandWizard':
+                    burstParticles(60);
+                    break;
+                case 'voiceUnlock':
+                    unlockVoiceMode();
+                    break;
+            }
+        }
+
+        function addLogoSparkle() {
+            const logo = document.querySelector('.logo');
+            if (!logo || logo.querySelector('.logo-sparkle')) return;
+
+            for (let i = 0; i < 3; i++) {
+                const sparkle = document.createElement('span');
+                sparkle.className = 'logo-sparkle';
+                sparkle.style.left = (20 + Math.random() * 60) + '%';
+                sparkle.style.top = (10 + Math.random() * 80) + '%';
+                sparkle.style.animationDelay = (Math.random() * 2) + 's';
+                logo.style.position = 'relative';
+                logo.appendChild(sparkle);
+            }
+        }
+
+        function revealWizard() {
+            const avatar = document.getElementById('wizardAvatar');
+            if (!avatar) return;
+
+            avatar.style.display = 'block';
+            avatar.style.animation = 'wizardFlyIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            playSparkleSound();
+
+            // Wizard greeting after fly-in
+            setTimeout(() => {
+                showWizardSpeech("Greetings! I am the Manager Wizard. I shall assist you on your quest!");
+            }, 1500);
+        }
+
+        function unlockWizardMode() {
+            gamificationState.wizardUnlocked = true;
+            saveGamificationState();
+
+            const wizToggle = document.getElementById('wizardToggle');
+            if (wizToggle) wizToggle.style.display = 'flex';
+
+            // Auto-activate wizard mode on first unlock
+            setTimeout(() => toggleWizardMode(), 1500);
+        }
+
+        function unlockVoiceMode() {
+            gamificationState.voiceUnlocked = true;
+            saveGamificationState();
+
+            const voiceToggle = document.getElementById('voiceToggle');
+            if (voiceToggle) voiceToggle.style.display = 'flex';
+        }
+
+        function toggleWizardMode() {
+            if (!gamificationState.wizardUnlocked) return;
+
+            gamificationState.wizardActive = !gamificationState.wizardActive;
+            saveGamificationState();
+
+            const body = document.body;
+            const btn = document.getElementById('wizardToggle');
+            const avatar = document.getElementById('wizardAvatar');
+
+            if (gamificationState.wizardActive) {
+                body.classList.add('wizard-mode');
+                if (btn) btn.innerHTML = '<i class="fas fa-building"></i> Corporate Mode';
+                if (avatar) avatar.style.display = 'block';
+                spawnParticles();
+                playWizardOnSound();
+                showWizardSpeech("The arcane realm reveals itself!");
+            } else {
+                body.classList.remove('wizard-mode');
+                if (btn) btn.innerHTML = '<i class="fas fa-hat-wizard"></i> Wizard Mode';
+                if (avatar) avatar.style.display = 'none';
+                clearParticles();
+                playWizardOffSound();
+            }
+        }
+
+        function toggleVoiceMode() {
+            if (!gamificationState.voiceUnlocked) return;
+
+            gamificationState.voiceActive = !gamificationState.voiceActive;
+            saveGamificationState();
+
+            const btn = document.getElementById('voiceToggle');
+            if (gamificationState.voiceActive) {
+                if (btn) btn.innerHTML = '<i class="fas fa-volume-mute"></i> Voice Off';
+                showWizardSpeech("Voice Mode activated! I shall narrate your journey!");
+            } else {
+                if (btn) btn.innerHTML = '<i class="fas fa-volume-up"></i> Voice Mode';
+            }
+        }
+
+        function updateRankDisplay() {
+            const rankDisplay = document.getElementById('rankDisplay');
+            if (!rankDisplay) return;
+
+            let currentRank = null;
+            for (const m of MILESTONES) {
+                if (gamificationState.searchCount >= m.count) currentRank = m;
+            }
+
+            if (currentRank) {
+                rankDisplay.style.display = 'flex';
+                rankDisplay.innerHTML = `<i class="fas ${currentRank.icon}"></i> ${currentRank.title}`;
+            } else {
+                rankDisplay.style.display = 'none';
+            }
+        }
+
+        // ---- Wizard Speech Bubble ----
+
+        function showWizardSpeech(text) {
+            const bubble = document.getElementById('wizardSpeech');
+            const avatar = document.getElementById('wizardAvatar');
+            if (!bubble || !avatar) return;
+
+            if (avatar.style.display === 'none') return;
+
+            bubble.textContent = text;
+            bubble.style.display = 'block';
+            bubble.style.animation = 'bubbleIn 0.3s ease forwards';
+
+            setTimeout(() => {
+                bubble.style.display = 'none';
+            }, 5000);
+        }
+
+        function showRandomWizardTip() {
+            const tip = WIZARD_TIPS[Math.floor(Math.random() * WIZARD_TIPS.length)];
+            showWizardSpeech(tip);
+        }
+
+        // ---- Particle System ----
+
+        function spawnParticles() {
+            const container = document.getElementById('particlesContainer');
+            if (!container) return;
+            clearParticles();
+
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.top = Math.random() * 100 + 'vh';
+                particle.style.width = (3 + Math.random() * 5) + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.animationDuration = (4 + Math.random() * 6) + 's';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        function clearParticles() {
+            const container = document.getElementById('particlesContainer');
+            if (container) container.innerHTML = '';
+        }
+
+        function burstParticles(count) {
+            const container = document.getElementById('particlesContainer');
+            if (!container) return;
+
+            for (let i = 0; i < (count || 20); i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const angle = (Math.PI * 2 * i) / count;
+                const distance = 100 + Math.random() * 200;
+                const startX = window.innerWidth / 2;
+                const startY = window.innerHeight / 2;
+
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                particle.style.width = (4 + Math.random() * 6) + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 60%)`;
+                particle.style.position = 'fixed';
+                particle.style.borderRadius = '50%';
+                particle.style.zIndex = '100000';
+                particle.style.transition = 'all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                particle.style.opacity = '1';
+
+                container.appendChild(particle);
+
+                requestAnimationFrame(() => {
+                    particle.style.left = (startX + Math.cos(angle) * distance) + 'px';
+                    particle.style.top = (startY + Math.sin(angle) * distance) + 'px';
+                    particle.style.opacity = '0';
+                    particle.style.transform = 'scale(0)';
+                });
+
+                setTimeout(() => particle.remove(), 1500);
+            }
+        }
+
+        // ---- Sound System (Web Audio API) ----
+
+        let audioCtx = null;
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playNote(freq, duration, type, gain) {
+            try {
+                const ctx = getAudioCtx();
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = type || 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                g.gain.setValueAtTime(gain || 0.15, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(g);
+                g.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) { /* Audio not available */ }
+        }
+
+        function playAchievementSound() {
+            // Rising arpeggio fanfare
+            [0, 0.12, 0.24, 0.36, 0.48].forEach((delay, i) => {
+                setTimeout(() => playNote([523, 659, 784, 1047, 1319][i], 0.6, 'sine', 0.12), delay * 1000);
+            });
+        }
+
+        function playSparkleSound() {
+            [0, 0.08, 0.16].forEach((delay, i) => {
+                setTimeout(() => playNote([1200, 1500, 1800][i], 0.3, 'sine', 0.08), delay * 1000);
+            });
+        }
+
+        function playWizardOnSound() {
+            // Ascending magical chord
+            [0, 0.1, 0.2, 0.3].forEach((delay, i) => {
+                setTimeout(() => playNote([392, 523, 659, 784][i], 0.8, 'triangle', 0.1), delay * 1000);
+            });
+        }
+
+        function playWizardOffSound() {
+            // Descending chord
+            [0, 0.1, 0.2, 0.3].forEach((delay, i) => {
+                setTimeout(() => playNote([784, 659, 523, 392][i], 0.5, 'triangle', 0.08), delay * 1000);
+            });
+        }
+
+        function playPortalSound() {
+            const ctx = getAudioCtx();
+            try {
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
+                osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 1.0);
+                g.gain.setValueAtTime(0.08, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+                osc.connect(g);
+                g.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 1.0);
+            } catch (e) {}
+        }
+
+        // ---- Easter Eggs ----
+
+        function checkEasterEggs(query) {
+            const q = query.toLowerCase().trim();
+            if (EASTER_EGG_SEARCHES[q]) {
+                triggerEasterEgg(EASTER_EGG_SEARCHES[q]);
+                return true;
+            }
+            return false;
+        }
+
+        function triggerEasterEgg(effect) {
+            switch (effect) {
+                case 'particleBurst':
+                    burstParticles(50);
+                    playPortalSound();
+                    showWizardSpeech("✨ The ancient magic surges!");
+                    break;
+                case 'wizardOn':
+                    if (gamificationState.wizardUnlocked && !gamificationState.wizardActive) {
+                        toggleWizardMode();
+                    } else if (!gamificationState.wizardUnlocked) {
+                        showWizardSpeech("The spell fizzles... you haven't unlocked this power yet!");
+                        playSparkleSound();
+                    }
+                    break;
+                case 'wizardOff':
+                    if (gamificationState.wizardActive) {
+                        toggleWizardMode();
+                    }
+                    break;
+                case 'patronus':
+                    burstParticles(80);
+                    playAchievementSound();
+                    const avatar = document.getElementById('wizardAvatar');
+                    if (avatar) {
+                        avatar.style.display = 'block';
+                        avatar.style.animation = 'glowPulse 1s ease 3';
+                    }
+                    break;
+                case 'portalOpen':
+                    playPortalSound();
+                    burstParticles(40);
+                    document.body.style.transition = 'filter 0.5s';
+                    document.body.style.filter = 'hue-rotate(180deg)';
+                    setTimeout(() => {
+                        document.body.style.filter = '';
+                    }, 2000);
+                    break;
+            }
+        }
+
+        // ---- Dev Helpers (console only) ----
+
+        window.resetWizard = function() {
+            localStorage.removeItem('mw_search_count');
+            localStorage.removeItem('mw_wizard_unlocked');
+            localStorage.removeItem('mw_wizard_active');
+            localStorage.removeItem('mw_voice_unlocked');
+            localStorage.removeItem('mw_voice_active');
+            localStorage.removeItem('mw_shown_milestones');
+            location.reload();
+        };
+
+        window.fastForwardTo = function(n) {
+            gamificationState.searchCount = n - 1;
+            gamificationState.shownMilestones = MILESTONES
+                .filter(m => m.count < n)
+                .map(m => m.count);
+            saveGamificationState();
+            incrementSearchCount();
+        };
+
+        window.getWizardState = function() {
+            return { ...gamificationState };
+        };
     </script>
+    <!-- Wizard Avatar (appears after 10 searches) -->
+    <div class="wizard-avatar-container" id="wizardAvatar">
+        <div class="wizard-speech-bubble" id="wizardSpeech"></div>
+        <img src="https://storage.googleapis.com/pspm-community-images/wizard/wizard-character.png" alt="Manager Wizard" onclick="showRandomWizardTip()">
+    </div>
+
+    <!-- Milestone Celebration Overlay -->
+    <div class="milestone-overlay" id="milestoneOverlay" onclick="if(event.target===this)dismissMilestone()">
+        <div class="milestone-card" id="milestoneCard">
+            <div class="milestone-badge" id="milestoneBadge"><i class="fas fa-star"></i></div>
+            <div class="milestone-title" id="milestoneTitle"></div>
+            <div class="milestone-subtitle" id="milestoneSubtitle"></div>
+            <button class="milestone-dismiss" onclick="dismissMilestone()">Continue</button>
+        </div>
+    </div>
+
+    <!-- Floating Particles (wizard mode) -->
+    <div class="particles-container" id="particlesContainer"></div>
 </body>
 </html>
