@@ -759,6 +759,14 @@ DOCUMENT_PATTERNS = {
         'icon': 'gavel',
         'color': '#4f46e5',
         'label': 'Bylaws'
+    },
+    'financial': {
+        'keywords': ['balance', 'bank', 'financial', 'budget', 'statement', 'expense', 'revenue',
+                     'income', 'collection', 'delinquent', 'delinquency', 'assessment', 'reserve',
+                     'operating', 'invoice', 'monthly report', 'report'],
+        'icon': 'chart-pie',
+        'color': '#0284c7',
+        'label': 'Financial Report'
     }
 }
 
@@ -767,7 +775,8 @@ QUESTION_PATTERNS = [
     r'\b(what|how|when|where|can i|am i allowed|is it okay|rules? for|policy on|guidelines? for)\b',
     r'\b(fence|pool|parking|pet|architectural|arc|modification|violation)\b',
     r'\b(cc&?r|bylaws?|regulations?|restrictions?)\b',
-    r'\b(height|limit|allowed|permitted|required|deadline)\b'
+    r'\b(height|limit|allowed|permitted|required|deadline)\b',
+    r'\b(balance|bank|financial|budget|statement|expense|revenue|delinquen|assessment|reserve|operating|invoice|report)\b'
 ]
 
 
@@ -909,6 +918,13 @@ def search_azure_documents(query, community=None, top=10):
         expanded_query = f"{query} pets animals breed leash aggressive weight limit"
         logger.info(f"Expanded pet query: {expanded_query}")
 
+    # Detect date/recency intent in query (bank balance, financial, recent, 2025, 2026, etc.)
+    date_keywords = ['balance', 'bank', 'financial', 'budget', 'statement', 'report', 'recent',
+                     'latest', 'current', 'last month', 'this year', 'monthly', 'invoice',
+                     'expense', 'collection', 'delinquent', 'delinquency', 'revenue']
+    year_pattern = re.search(r'20[2-3]\d', query)
+    has_date_intent = any(kw in query.lower() for kw in date_keywords) or year_pattern is not None
+
     # Use simple search (semantic quota exhausted)
     # searchMode: "any" allows natural language queries to work better
     payload = {
@@ -917,11 +933,16 @@ def search_azure_documents(query, community=None, top=10):
         "searchMode": "any",
         "top": top,
         "count": True,
-        "select": "file_name,file_path,web_url,chunk_text,community_name,document_type",
+        "select": "file_name,file_path,web_url,chunk_text,community_name,document_type,last_modified",
         "highlight": "chunk_text",
         "highlightPreTag": "<mark>",
         "highlightPostTag": "</mark>"
     }
+
+    # Note: last_modified field is null in the index, so orderby won't work.
+    # Instead, we boost recency by extracting dates from filenames in post-processing.
+    if has_date_intent:
+        logger.info(f"Date/financial intent detected - will prioritize recent docs in post-processing")
 
     # Build OData filters for community and archive exclusion
     filters = []
@@ -931,22 +952,30 @@ def search_azure_documents(query, community=None, top=10):
     filters.append("not search.ismatch('_To Be Filed', 'file_path')")
 
     # Filter by community using PHRASE matching (quotes prevent word-level matching)
-    # Also include global/shared documents (stored in _Global Documents folder)
+    # Index community_name may have suffixes like "HOA", "Condos", etc. so we try multiple variants.
+    # Also include global/shared documents and match on file_path (folder name).
     if community:
         normalized = normalize_community_name(community)
         if normalized:
-            # Use phrase matching with quotes to prevent "Heritage Park" matching "Central Park"
-            # Escape single quotes in the normalized name
             safe_normalized = normalized.replace("'", "''")
-            # Include community-specific docs OR global shared docs
-            community_filter = (
-                f'(search.ismatch(\'"{safe_normalized}"\', \'community_name\') or '
-                f'search.ismatch(\'"_global"\', \'community_name\') or '
-                f'search.ismatch(\'"all communities"\', \'community_name\') or '
-                f'search.ismatch(\'"_global documents"\', \'file_path\'))'
-            )
+            # Build multiple matching strategies to handle "Avalon" vs "Avalon HOA" etc.
+            community_clauses = [
+                # Exact phrase match on community_name
+                f'search.ismatch(\'"{safe_normalized}"\', \'community_name\')',
+                # With common suffixes the index might have
+                f'search.ismatch(\'"{safe_normalized} HOA"\', \'community_name\')',
+                f'search.ismatch(\'"{safe_normalized} Condos"\', \'community_name\')',
+                f'search.ismatch(\'"{safe_normalized} Condominium"\', \'community_name\')',
+                # Match on file_path (folder name in SharePoint)
+                f'search.ismatch(\'"{safe_normalized}"\', \'file_path\')',
+                # Global/shared documents
+                f'search.ismatch(\'"_global"\', \'community_name\')',
+                f'search.ismatch(\'"all communities"\', \'community_name\')',
+                f'search.ismatch(\'"_global documents"\', \'file_path\')',
+            ]
+            community_filter = '(' + ' or '.join(community_clauses) + ')'
             filters.append(community_filter)
-            logger.info(f"Community filter: '{community}' -> phrase: '\"{safe_normalized}\"' (+ global docs)")
+            logger.info(f"Community filter: '{community}' -> '{safe_normalized}' with HOA/Condos/path variants")
 
     if filters:
         payload["filter"] = " and ".join(filters)
@@ -1100,6 +1129,40 @@ def search_azure_documents(query, community=None, top=10):
 
             logger.info(f"Azure Search found {len(results)} results, {len(filtered_results)} after all filters")
 
+            # For date/financial queries, re-sort by extracted date from filename
+            # Since last_modified is null, we parse dates from titles like:
+            # "DEC 2025 Report.pdf", "12-2022 Bank Statement.pdf", "12 DECEMBER BANK STATEMENT.pdf"
+            if has_date_intent and filtered_results:
+                MONTH_MAP = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                             'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+                             'january': 1, 'february': 2, 'march': 3, 'april': 4,
+                             'june': 6, 'july': 7, 'august': 8, 'september': 9,
+                             'october': 10, 'november': 11, 'december': 12}
+
+                def extract_date_score(doc):
+                    """Extract a sortable date score from title/path. Higher = more recent."""
+                    title = (doc.get('title') or '').lower()
+                    # Pattern: "MON YYYY" (e.g., "DEC 2025", "March 2025")
+                    m = re.search(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(20\d{2})', title)
+                    if m:
+                        return int(m.group(2)) * 100 + MONTH_MAP.get(m.group(1)[:3], 0)
+                    # Pattern: "MM-YYYY" or "MM YYYY" (e.g., "12-2025", "12 2025")
+                    m = re.search(r'(\d{1,2})[-\s](20\d{2})', title)
+                    if m and 1 <= int(m.group(1)) <= 12:
+                        return int(m.group(2)) * 100 + int(m.group(1))
+                    # Pattern: "YYYY" alone
+                    m = re.search(r'(20\d{2})', title)
+                    if m:
+                        return int(m.group(1)) * 100
+                    return 0  # No date found
+
+                # Sort: most recent first, then by search relevance score
+                filtered_results.sort(key=lambda d: (-extract_date_score(d), -d.get('score', 0)))
+                if filtered_results:
+                    top_title = filtered_results[0].get('title', '')
+                    top_score = extract_date_score(filtered_results[0])
+                    logger.info(f"Date-sorted results: top='{top_title}' (date_score={top_score})")
+
             # Get semantic answers from Azure (extractive answers)
             semantic_answers = []
             for ans in data.get('@search.answers', []):
@@ -1130,6 +1193,26 @@ def extract_answer_with_claude(query, documents, community=None):
     if not ANTHROPIC_API_KEY or not documents:
         return None
 
+    # Determine extraction type FIRST (needed for content length decisions)
+    query_lower = query.lower()
+    extraction_type = "general"
+
+    if any(kw in query_lower for kw in ['fence', 'height', 'material']):
+        extraction_type = "fence"
+    elif any(kw in query_lower for kw in ['pool', 'swimming', 'hours']):
+        extraction_type = "pool"
+    elif any(kw in query_lower for kw in ['parking', 'vehicle', 'tow']):
+        extraction_type = "parking"
+    elif any(kw in query_lower for kw in ['pet', 'dog', 'cat', 'animal']):
+        extraction_type = "pet"
+    elif any(kw in query_lower for kw in ['architectural', 'arc', 'modification']):
+        extraction_type = "architectural"
+    elif any(kw in query_lower for kw in ['balance', 'bank', 'financial', 'budget', 'statement',
+                                           'expense', 'revenue', 'income', 'collection', 'delinquen',
+                                           'assessment', 'reserve', 'operating', 'invoice', 'report',
+                                           'monthly report']):
+        extraction_type = "financial"
+
     # Prepare document context WITH actual content for answer extraction
     doc_context = "Found relevant documents with content:\n"
     has_archived_docs = any(doc.get('is_archived') for doc in documents[:5])
@@ -1148,31 +1231,16 @@ def extract_answer_with_claude(query, documents, community=None):
         # Include actual document content - this is critical for answer extraction
         content = doc.get('content', '').strip()
         if content:
-            # Truncate to ~2000 chars per doc (5 docs * 2000 = 10k chars)
-            # The "6 feet" fence height in Avalon Fencing.pdf is at position 1717
-            if len(content) > 2000:
-                content = content[:2000] + "..."
+            # Financial/report queries need more content (bank balances can be deep in the doc)
+            max_chars = 4000 if extraction_type == 'financial' else 2000
+            if len(content) > max_chars:
+                content = content[:max_chars] + "..."
             doc_context += f"\n\nCONTENT:\n{content}"
         else:
             doc_context += "\n\n(No content available - document may need to be opened)"
         doc_context += "\n"
 
-    # Determine what type of info to extract
-    query_lower = query.lower()
-    extraction_type = "general"
-
-    if any(kw in query_lower for kw in ['fence', 'height', 'material']):
-        extraction_type = "fence"
-    elif any(kw in query_lower for kw in ['pool', 'swimming', 'hours']):
-        extraction_type = "pool"
-    elif any(kw in query_lower for kw in ['parking', 'vehicle', 'tow']):
-        extraction_type = "parking"
-    elif any(kw in query_lower for kw in ['pet', 'dog', 'cat', 'animal']):
-        extraction_type = "pet"
-    elif any(kw in query_lower for kw in ['architectural', 'arc', 'modification']):
-        extraction_type = "architectural"
-
-    # Build extraction prompt based on type
+    # Build extraction prompt based on type (extraction_type already determined above)
     extraction_prompts = {
         "fence": """Extract fence regulations into this JSON format:
 {
@@ -1218,6 +1286,16 @@ def extract_answer_with_claude(query, documents, community=None):
     "key_requirements": ["req1", "req2"],
     "summary": "One sentence summary"
 }""",
+        "financial": """Extract the financial information into this JSON format:
+{
+    "answer": "Direct answer with specific dollar amounts and dates",
+    "key_points": ["Bank balance: $X as of DATE", "Operating account: $X", "Reserve account: $X"],
+    "as_of_date": "The date this financial data is from",
+    "source_section": "Section name (e.g. Bank Reconciliation, Financial Summary)",
+    "summary": "One sentence summary with key figures"
+}
+IMPORTANT: If multiple documents contain financial data, use the MOST RECENT one (newest date).
+Look for bank reconciliation sections, ending balances, operating/reserve account balances.""",
         "general": """Extract the relevant information into this JSON format:
 {
     "answer": "Direct answer to the question",
@@ -1227,7 +1305,7 @@ def extract_answer_with_claude(query, documents, community=None):
 }"""
     }
 
-    prompt = f"""You are a helpful assistant for PS Property Management. A manager is searching for specific information about community rules and policies.
+    prompt = f"""You are a helpful assistant for PS Property Management. A manager is searching for specific information about community documents including rules, policies, financial reports, and monthly community reports.
 
 Question: {query}
 {f'Community: {community}' if community else ''}
@@ -1236,6 +1314,8 @@ Question: {query}
 
 IMPORTANT: Read the document CONTENT provided above and extract the ACTUAL ANSWER to the question.
 Do NOT just suggest opening documents - extract the specific information directly from the content.
+When the question involves dates, financial data, or recent information, ALWAYS prefer data from the MOST RECENT document (check file names for dates like "NOV 2025", "DEC 2025", etc.).
+Monthly Community Reports contain bank balances, financial summaries, violation reports, collections data, expenses, and other operational data.
 {f"⚠️ NOTE: Some documents are from ARCHIVE folders and may be outdated. If using archived documents, mention this in your answer." if has_archived_docs else ""}
 
 Based on the document content, provide a response in this JSON format:
@@ -1510,8 +1590,8 @@ def unified_search():
     else:
         detected_type = mode
 
-    # Extract community from query if present
-    community = extract_community_from_query(query)
+    # Extract community: prefer explicit parameter, fallback to query text extraction
+    community = request.args.get('community', '').strip() or extract_community_from_query(query)
 
     result = {
         'query': query,
