@@ -3711,6 +3711,26 @@
             "New owners (< 90 days) get a cyan badge. Welcome them warmly!"
         ];
 
+        const WIZARD_AUDIO_BASE = 'https://storage.googleapis.com/pspm-community-images/wizard/';
+        const WIZARD_VOICE_LINES = {
+            greeting: WIZARD_AUDIO_BASE + 'wizard-greeting.mp3',
+            sage: WIZARD_AUDIO_BASE + 'wizard-sage.mp3',
+            unlock: WIZARD_AUDIO_BASE + 'wizard-unlock.mp3',
+            grand: WIZARD_AUDIO_BASE + 'wizard-grand.mp3',
+            modeOn: WIZARD_AUDIO_BASE + 'wizard-mode-on.mp3',
+            modeOff: WIZARD_AUDIO_BASE + 'wizard-mode-off.mp3'
+        };
+
+        function playWizardVoice(key) {
+            const url = WIZARD_VOICE_LINES[key];
+            if (!url) return;
+            try {
+                const audio = new Audio(url);
+                audio.volume = 0.7;
+                audio.play().catch(() => {});
+            } catch (e) { /* Audio not available */ }
+        }
+
         const EASTER_EGG_SEARCHES = {
             'abracadabra': 'particleBurst',
             'lumos': 'wizardOn',
@@ -3838,17 +3858,20 @@
                     break;
                 case 'wizardReveal':
                     revealWizard();
+                    setTimeout(() => playWizardVoice('greeting'), 1200);
                     break;
                 case 'sage':
-                    // Wizard starts giving tips (handled in incrementSearchCount)
                     const avatar = document.getElementById('wizardAvatar');
                     if (avatar) avatar.style.display = 'block';
+                    playWizardVoice('sage');
                     break;
                 case 'wizardUnlock':
                     unlockWizardMode();
+                    setTimeout(() => playWizardVoice('unlock'), 1000);
                     break;
                 case 'grandWizard':
                     burstParticles(60);
+                    playWizardVoice('grand');
                     break;
                 case 'voiceUnlock':
                     unlockVoiceMode();
@@ -3920,6 +3943,7 @@
                 if (avatar) avatar.style.display = 'block';
                 spawnParticles();
                 playWizardOnSound();
+                playWizardVoice('modeOn');
                 showWizardSpeech("The arcane realm reveals itself!");
             } else {
                 body.classList.remove('wizard-mode');
@@ -3927,6 +3951,7 @@
                 if (avatar) avatar.style.display = 'none';
                 clearParticles();
                 playWizardOffSound();
+                playWizardVoice('modeOff');
             }
         }
 
