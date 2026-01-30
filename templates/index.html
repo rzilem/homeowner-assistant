@@ -1377,6 +1377,226 @@
             border-top: 1px solid var(--gray-200);
         }
 
+        /* Inline Document Preview */
+        .doc-preview-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.3s ease,
+                        margin 0.3s ease;
+            opacity: 0;
+            margin-top: 0;
+            border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        .doc-preview-panel.open {
+            max-height: 800px;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+
+        .doc-preview-inner {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--gray-50);
+        }
+
+        .doc-preview-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+            font-size: 0.78rem;
+        }
+
+        .doc-preview-toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .doc-preview-toolbar-left i {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .doc-preview-toolbar-title {
+            font-weight: 600;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .doc-preview-toolbar-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .doc-preview-toolbar-actions a,
+        .doc-preview-toolbar-actions button {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+        }
+
+        .doc-preview-toolbar-actions a {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .doc-preview-toolbar-actions a:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .doc-preview-toolbar-actions button {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+        }
+
+        .doc-preview-toolbar-actions button:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .doc-preview-excerpt {
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .doc-preview-excerpt-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--doc-color, var(--primary));
+            margin-bottom: 10px;
+        }
+
+        .doc-preview-excerpt-text {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--gray-700);
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .doc-preview-excerpt-text::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .doc-preview-excerpt-text::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 4px;
+        }
+
+        .doc-preview-excerpt-text mark {
+            background: linear-gradient(120deg, #fef08a 0%, #fde047 100%);
+            color: var(--gray-900);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .doc-preview-iframe-wrap {
+            position: relative;
+            height: 500px;
+            background: var(--gray-100);
+        }
+
+        .doc-preview-iframe-wrap iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .doc-preview-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--gray-50);
+            z-index: 2;
+            transition: opacity 0.3s ease;
+        }
+
+        .doc-preview-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .doc-preview-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--doc-color, var(--primary));
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .doc-preview-loading-text {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        .btn-preview-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: linear-gradient(135deg, var(--doc-color, var(--primary)), color-mix(in srgb, var(--doc-color, var(--primary)), #000 15%));
+            color: white;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+
+        .btn-preview-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-preview-toggle.active {
+            background: var(--gray-600);
+        }
+
+        .btn-preview-toggle .toggle-chevron {
+            transition: transform 0.3s ease;
+            font-size: 10px;
+        }
+
+        .btn-preview-toggle.active .toggle-chevron {
+            transform: rotate(180deg);
+        }
+
         /* Attorney Warning */
         .attorney-warning {
             background: var(--danger);
@@ -2056,7 +2276,7 @@
                             <span class="section-count">${data.documents.length}</span>
                         </div>
                         <div class="results-grid">
-                            ${data.documents.map(d => renderDocumentCard(d)).join('')}
+                            ${data.documents.map((d, i) => renderDocumentCard(d, i)).join('')}
                         </div>
                     </div>
                 `;
@@ -2412,8 +2632,34 @@
             `;
         }
 
-        function renderDocumentCard(doc) {
+        function renderDocumentCard(doc, index) {
             const typeInfo = doc.doc_type_info || { icon: 'file-alt', color: '#0078d4', label: 'Document' };
+            const previewId = `doc-preview-${index}`;
+            const hasContent = doc.content && doc.content.trim().length > 0;
+            const hasUrl = !!doc.url;
+
+            // Build the highlighted excerpt - prefer caption_highlighted, fall back to content
+            let excerptHtml = '';
+            if (doc.caption_highlighted) {
+                excerptHtml = doc.caption_highlighted;
+            } else if (doc.content) {
+                // Truncate content and show first ~600 chars
+                let text = escapeHtml(doc.content.substring(0, 600));
+                if (doc.content.length > 600) text += '...';
+                // Highlight search terms from the query
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput && searchInput.value) {
+                    const queryWords = searchInput.value.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                    // Remove common words that aren't useful to highlight
+                    const skipWords = ['the', 'and', 'for', 'are', 'was', 'who', 'what', 'how', 'does', 'rules', 'responsible'];
+                    const highlightWords = queryWords.filter(w => !skipWords.includes(w));
+                    highlightWords.forEach(word => {
+                        const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                        text = text.replace(regex, '<mark>$1</mark>');
+                    });
+                }
+                excerptHtml = text;
+            }
 
             return `
                 <div class="document-card" style="--doc-color: ${typeInfo.color}">
@@ -2439,20 +2685,106 @@
                         </div>
                     </div>
                     <div class="doc-actions">
-                        ${doc.url ? `
-                            <a href="${escapeHtml(doc.url)}" target="_blank" class="btn btn-primary">
-                                <i class="fas fa-external-link-alt"></i> View Document
-                            </a>
-                            <a href="${escapeHtml(doc.url.substring(0, doc.url.lastIndexOf('/')))}" target="_blank" class="btn btn-secondary">
-                                <i class="fas fa-folder-open"></i> Open Folder
+                        ${hasContent || hasUrl ? `
+                            <button class="btn-preview-toggle" onclick="toggleDocPreview('${previewId}', this, '${hasUrl ? escapeHtml(doc.url).replace(/'/g, "\\'") : ''}')">
+                                <i class="fas fa-eye"></i> Preview
+                                <i class="fas fa-chevron-down toggle-chevron"></i>
+                            </button>
+                        ` : ''}
+                        ${hasUrl ? `
+                            <a href="${escapeHtml(doc.url)}" target="_blank" class="btn btn-secondary">
+                                <i class="fas fa-external-link-alt"></i> Open in SharePoint
                             </a>
                         ` : ''}
                         <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(doc.title)}')">
                             <i class="fas fa-copy"></i> Copy Title
                         </button>
                     </div>
+
+                    <!-- Expandable Preview Panel -->
+                    <div id="${previewId}" class="doc-preview-panel" data-url="${hasUrl ? escapeHtml(doc.url) : ''}" data-loaded="false">
+                        <div class="doc-preview-inner">
+                            <div class="doc-preview-toolbar">
+                                <div class="doc-preview-toolbar-left">
+                                    <i class="fas fa-${typeInfo.icon}"></i>
+                                    <span class="doc-preview-toolbar-title">${escapeHtml(doc.title)}</span>
+                                </div>
+                                <div class="doc-preview-toolbar-actions">
+                                    ${hasUrl ? `
+                                        <a href="${escapeHtml(doc.url)}" target="_blank">
+                                            <i class="fas fa-external-link-alt"></i> Full View
+                                        </a>
+                                        <a href="${escapeHtml(doc.url.substring(0, doc.url.lastIndexOf('/')))}" target="_blank">
+                                            <i class="fas fa-folder-open"></i> Folder
+                                        </a>
+                                    ` : ''}
+                                    <button onclick="toggleDocPreview('${previewId}', document.querySelector('[onclick*=\\'${previewId}\\']'))">
+                                        <i class="fas fa-times"></i> Close
+                                    </button>
+                                </div>
+                            </div>
+                            ${excerptHtml ? `
+                                <div class="doc-preview-excerpt">
+                                    <div class="doc-preview-excerpt-label">
+                                        <i class="fas fa-highlighter"></i>
+                                        Relevant Excerpt
+                                    </div>
+                                    <div class="doc-preview-excerpt-text">${excerptHtml}</div>
+                                </div>
+                            ` : ''}
+                            ${hasUrl ? `
+                                <div class="doc-preview-iframe-wrap">
+                                    <div class="doc-preview-loading" id="${previewId}-loading">
+                                        <div class="doc-preview-spinner" style="border-top-color: ${typeInfo.color}"></div>
+                                        <div class="doc-preview-loading-text">Loading document...</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
                 </div>
             `;
+        }
+
+        function toggleDocPreview(previewId, btn, url) {
+            const panel = document.getElementById(previewId);
+            if (!panel) return;
+
+            const isOpen = panel.classList.contains('open');
+
+            if (isOpen) {
+                // Collapse
+                panel.classList.remove('open');
+                if (btn) btn.classList.remove('active');
+            } else {
+                // Expand
+                panel.classList.add('open');
+                if (btn) btn.classList.add('active');
+
+                // Load iframe on first open
+                if (panel.dataset.loaded === 'false' && url) {
+                    panel.dataset.loaded = 'true';
+                    const iframeWrap = panel.querySelector('.doc-preview-iframe-wrap');
+                    const loading = panel.querySelector('.doc-preview-loading');
+
+                    if (iframeWrap) {
+                        // Build embed URL - use Office Online viewer for SharePoint docs
+                        const embedUrl = url;
+                        const iframe = document.createElement('iframe');
+                        iframe.src = embedUrl;
+                        iframe.title = 'Document Preview';
+                        iframe.setAttribute('loading', 'lazy');
+                        iframe.onload = () => {
+                            if (loading) loading.classList.add('hidden');
+                        };
+                        // Hide loading after timeout in case onload doesn't fire (cross-origin)
+                        setTimeout(() => {
+                            if (loading) loading.classList.add('hidden');
+                        }, 4000);
+                        iframeWrap.appendChild(iframe);
+                    }
+                }
+            }
         }
 
         function copyToClipboard(text) {
