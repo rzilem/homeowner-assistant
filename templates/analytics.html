@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Wizard - Search Analytics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --neutral: #64748b;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.5;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+            color: white; padding: 20px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .header h1 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+        .header a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem; }
+        .header a:hover { color: white; }
+        .time-filter { display: flex; gap: 8px; }
+        .time-filter button {
+            padding: 7px 16px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; border-radius: 8px;
+            cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+        }
+        .time-filter button.active { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); font-weight: 600; }
+        .time-filter button:hover { background: rgba(255,255,255,0.2); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        /* KPI Grid */
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card {
+            background: var(--card); border-radius: 14px; padding: 20px; text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: transform 0.2s;
+        }
+        .kpi-card:hover { transform: translateY(-2px); }
+        .kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .kpi-value { font-size: 2.2rem; font-weight: 800; }
+        .kpi-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+        .kpi-card.success .kpi-value { color: var(--success); }
+        .kpi-card.warning .kpi-value { color: var(--warning); }
+        .kpi-card.danger .kpi-value { color: var(--danger); }
+        .kpi-card.primary .kpi-value { color: var(--primary); }
+
+        /* Content grid */
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .section {
+            background: var(--card); border-radius: 14px; overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600;
+        }
+        .section-header i { margin-right: 8px; color: var(--primary); }
+
+        /* Items */
+        .item-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background 0.15s;
+        }
+        .item-row:last-child { border-bottom: none; }
+        .item-row:hover { background: #f8fafc; }
+        .item-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .item-query { font-weight: 500; }
+        .item-meta { font-size: 0.8rem; color: var(--text-muted); }
+        .item-count { font-size: 1.3rem; font-weight: 700; color: var(--text); min-width: 40px; text-align: right; }
+
+        /* Progress bar */
+        .bar-track { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 6px; width: 180px; }
+        .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+        .bar-fill.green { background: var(--success); }
+        .bar-fill.amber { background: var(--warning); }
+        .bar-fill.red { background: var(--danger); }
+
+        /* Priority dots */
+        .priority-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-right: 12px; margin-top: 4px; }
+        .priority-dot.critical { background: var(--danger); }
+        .priority-dot.high { background: var(--warning); }
+        .priority-dot.medium { background: #facc15; }
+        .priority-dot.low { background: var(--neutral); }
+
+        .failed-row { display: flex; align-items: flex-start; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+        .failed-row:last-child { border-bottom: none; }
+        .failed-row:hover { background: #fef2f2; }
+
+        /* Users table */
+        .users-section { grid-column: 1 / -1; }
+        .users-table { width: 100%; border-collapse: collapse; }
+        .users-table th { padding: 12px 20px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+        .users-table td { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+        .users-table tr:hover td { background: #f8fafc; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; margin-right: 10px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+
+        /* Chart area */
+        .chart-area { padding: 20px; height: 220px; position: relative; }
+        .chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 180px; padding: 0 10px; }
+        .chart-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .chart-bar { width: 70%; max-width: 60px; border-radius: 6px 6px 0 0; transition: height 0.6s ease; position: relative; }
+        .chart-bar.stacked-success { background: var(--success); }
+        .chart-bar.stacked-fail { background: #fecaca; margin-top: 2px; border-radius: 0; }
+        .chart-bar-group { display: flex; flex-direction: column-reverse; align-items: center; width: 70%; max-width: 60px; }
+        .chart-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; }
+        .chart-tooltip { position: absolute; top: -24px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .chart-col:hover .chart-tooltip { opacity: 1; }
+
+        /* Empty state */
+        .empty-state { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.3; }
+        .empty-state p { font-size: 1.1rem; margin-bottom: 8px; }
+        .empty-state small { font-size: 0.85rem; }
+
+        /* Loading */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 40px; gap: 10px; color: var(--text-muted); }
+        .spinner { width: 20px; height: 20px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 900px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-chart-line"></i> Search Analytics</h1>
+        <div style="display:flex;align-items:center;gap:20px;">
+            <div class="time-filter">
+                <button onclick="setPeriod('today')">Today</button>
+                <button onclick="setPeriod('week')" class="active">7 Days</button>
+                <button onclick="setPeriod('month')">30 Days</button>
+            </div>
+            <a href="/"><i class="fas fa-arrow-left"></i> Back to Wizard</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="kpiGrid">
+            <div class="kpi-card primary" id="kpiTotal">
+                <div class="kpi-label">Total Searches</div>
+                <div class="kpi-value" id="kpiTotalVal">--</div>
+                <div class="kpi-sub" id="kpiTotalSub">loading...</div>
+            </div>
+            <div class="kpi-card success" id="kpiSuccess">
+                <div class="kpi-label">Success Rate</div>
+                <div class="kpi-value" id="kpiSuccessVal">--%</div>
+                <div class="kpi-sub" id="kpiSuccessSub">found + partial</div>
+            </div>
+            <div class="kpi-card" id="kpiAI">
+                <div class="kpi-label">AI Answers</div>
+                <div class="kpi-value" id="kpiAIVal">--%</div>
+                <div class="kpi-sub" id="kpiAISub">of document searches</div>
+            </div>
+            <div class="kpi-card" id="kpiResponse">
+                <div class="kpi-label">Avg Response</div>
+                <div class="kpi-value" id="kpiResponseVal">--ms</div>
+                <div class="kpi-sub" id="kpiResponseSub">p95: --ms</div>
+            </div>
+        </div>
+
+        <!-- Charts + Lists -->
+        <div class="content-grid">
+            <!-- Search Volume Chart -->
+            <div class="section">
+                <div class="section-header">
+                    <span><i class="fas fa-chart-bar"></i> Search Volume</span>
+                </div>
+                <div class="chart-area" id="volumeChart">
+                    <div class="loading"><div class="spinner"></div> Loading chart...</div>
+                </div>
+            </div>
+
+            <!-- Top Failed Queries -->
+            <div class="section">
+                <div class="section-header">
+                    <span><i class="fas fa-exclamation-triangle"></i> Top Failed Queries</span>
+                </div>
+                <div id="failedList">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+            </div>
+
+            <!-- Top Searches -->
+            <div class="section">
+                <div class="section-header">
+                    <span><i class="fas fa-fire"></i> Top Searches</span>
+                </div>
+                <div id="popularList">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+            </div>
+
+            <!-- Top Communities -->
+            <div class="section">
+                <div class="section-header">
+                    <span><i class="fas fa-building"></i> Top Communities</span>
+                </div>
+                <div id="communityList">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+            </div>
+
+            <!-- User Activity Table -->
+            <div class="section users-section">
+                <div class="section-header">
+                    <span><i class="fas fa-users"></i> User Activity</span>
+                </div>
+                <div id="userTable">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let currentPeriod = 'week';
+
+function setPeriod(p) {
+    currentPeriod = p;
+    document.querySelectorAll('.time-filter button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    loadAll();
+}
+
+async function api(path) {
+    try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+    } catch(e) {
+        console.error('API error:', path, e);
+        return null;
+    }
+}
+
+function barColor(rate) {
+    if (rate >= 70) return 'green';
+    if (rate >= 40) return 'amber';
+    return 'red';
+}
+
+function initials(name, email) {
+    if (name) {
+        const parts = name.split(' ');
+        return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+    }
+    return email ? email[0].toUpperCase() : '?';
+}
+
+function rateClass(rate) {
+    if (rate >= 70) return 'badge-success';
+    if (rate >= 40) return 'badge-warning';
+    return 'badge-danger';
+}
+
+async function loadSummary() {
+    const d = await api(`/api/analytics/summary?period=${currentPeriod}`);
+    if (!d || d.error) {
+        document.getElementById('kpiTotalVal').textContent = '0';
+        document.getElementById('kpiTotalSub').textContent = d ? 'No data yet - searches will appear here' : 'Analytics not configured';
+        document.getElementById('kpiSuccessVal').textContent = '0%';
+        document.getElementById('kpiAIVal').textContent = '0%';
+        document.getElementById('kpiResponseVal').textContent = '0ms';
+        return;
+    }
+    document.getElementById('kpiTotalVal').textContent = d.total_searches.toLocaleString();
+    document.getElementById('kpiTotalSub').textContent = `${d.unique_users} unique users`;
+    document.getElementById('kpiSuccessVal').textContent = `${d.success_rate}%`;
+    const bd = d.result_breakdown || {};
+    document.getElementById('kpiSuccessSub').textContent = `${bd.found||0} found, ${bd.partial||0} partial, ${bd.not_found||0} miss`;
+    document.getElementById('kpiAIVal').textContent = `${d.ai_answer_rate}%`;
+    const sb = d.search_breakdown || {};
+    document.getElementById('kpiAISub').textContent = `${sb.document||0} doc searches, ${sb.homeowner||0} homeowner`;
+    document.getElementById('kpiResponseVal').textContent = `${d.avg_response_ms}ms`;
+    document.getElementById('kpiResponseSub').textContent = `p95: ${d.p95_response_ms||0}ms`;
+
+    // Color the success card
+    const sc = document.getElementById('kpiSuccess');
+    sc.className = 'kpi-card ' + (d.success_rate >= 60 ? 'success' : d.success_rate >= 30 ? 'warning' : 'danger');
+
+    // Color zero result card → response card shows neutral if low volume
+    const rc = document.getElementById('kpiResponse');
+    rc.className = 'kpi-card ' + (d.avg_response_ms <= 500 ? 'success' : d.avg_response_ms <= 2000 ? 'warning' : 'danger');
+}
+
+async function loadDailyChart() {
+    const days = currentPeriod === 'today' ? 1 : currentPeriod === 'week' ? 7 : 30;
+    const d = await api(`/api/analytics/daily-stats?days=${days}`);
+    const el = document.getElementById('volumeChart');
+
+    if (!d || !d.stats || d.stats.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>No search data yet</p><small>Charts will populate as staff use the Wizard</small></div>';
+        return;
+    }
+
+    const stats = d.stats;
+    const maxVal = Math.max(...stats.map(s => s.total_searches), 1);
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    let html = '<div class="chart-bars">';
+    for (const s of stats) {
+        const dt = new Date(s.date + 'T12:00:00');
+        const label = stats.length <= 7 ? dayNames[dt.getDay()] : `${dt.getMonth()+1}/${dt.getDate()}`;
+        const h = Math.max((s.total_searches / maxVal) * 160, 4);
+        const successH = h * (s.success_rate / 100);
+        const failH = h - successH;
+
+        html += `<div class="chart-col">
+            <div class="chart-tooltip">${s.total_searches} searches, ${s.success_rate}% success</div>
+            <div class="chart-bar-group" style="height:${h}px">
+                <div style="width:100%;height:${successH}px;background:var(--success);border-radius:6px 6px 0 0;"></div>
+                <div style="width:100%;height:${failH}px;background:#fecaca;"></div>
+            </div>
+            <div class="chart-label">${label}</div>
+        </div>`;
+    }
+    html += '</div>';
+    el.innerHTML = html;
+}
+
+async function loadPopular() {
+    const d = await api(`/api/analytics/popular-searches?period=${currentPeriod}&limit=6`);
+    const el = document.getElementById('popularList');
+
+    if (!d || !d.searches || d.searches.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No searches recorded yet</p></div>';
+        return;
+    }
+
+    const maxCount = Math.max(...d.searches.map(s => s.count), 1);
+    let html = '';
+    for (const s of d.searches) {
+        const pct = (s.count / maxCount) * 100;
+        html += `<div class="item-row">
+            <div class="item-info">
+                <span class="item-query">${esc(s.query)}</span>
+                <div class="bar-track"><div class="bar-fill ${barColor(s.success_rate)}" style="width:${pct}%"></div></div>
+                <span class="item-meta">${s.unique_users} users &middot; ${s.success_rate}% success</span>
+            </div>
+            <span class="item-count">${s.count}</span>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+async function loadFailed() {
+    const d = await api('/api/analytics/failed-searches?limit=6');
+    const el = document.getElementById('failedList');
+
+    if (!d || !d.failed_searches || d.failed_searches.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>No failed searches</p><small>Great - all queries are finding results!</small></div>';
+        return;
+    }
+
+    let html = '';
+    for (const f of d.failed_searches) {
+        const ago = timeAgo(f.last_failed);
+        html += `<div class="failed-row">
+            <div class="priority-dot ${f.calculated_priority}"></div>
+            <div class="item-info">
+                <span class="item-query">${esc(f.query)}</span>
+                <span class="item-meta">${f.failure_count} failures &middot; ${f.unique_users} users &middot; Last: ${ago}</span>
+            </div>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+async function loadCommunities() {
+    const days = currentPeriod === 'today' ? 1 : currentPeriod === 'week' ? 7 : 30;
+    const d = await api(`/api/analytics/community-patterns?days=${days}`);
+    const el = document.getElementById('communityList');
+
+    if (!d || !d.communities || d.communities.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><p>No community data yet</p></div>';
+        return;
+    }
+
+    let html = '';
+    for (const c of d.communities.slice(0, 6)) {
+        html += `<div class="item-row">
+            <div class="item-info">
+                <span class="item-query">${esc(c.community)}</span>
+                <span class="item-meta"><span class="badge ${rateClass(c.success_rate)}">${c.success_rate}% success</span> &middot; ${c.unique_users} users</span>
+            </div>
+            <span class="item-count">${c.total_searches}</span>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+async function loadUsers() {
+    const days = currentPeriod === 'today' ? 1 : currentPeriod === 'week' ? 7 : 30;
+    const d = await api(`/api/analytics/user-activity?days=${days}&limit=10`);
+    const el = document.getElementById('userTable');
+
+    if (!d || !d.users || d.users.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No user activity yet</p><small>User stats will appear once staff log in and search</small></div>';
+        return;
+    }
+
+    let html = `<table class="users-table">
+        <thead><tr>
+            <th>User</th><th>Searches</th><th>Active Days</th><th>Success Rate</th><th>Avg Response</th><th>Last Active</th>
+        </tr></thead><tbody>`;
+
+    for (const u of d.users) {
+        const name = u.name || u.email.split('@')[0];
+        const ago = timeAgo(u.last_search);
+        html += `<tr>
+            <td><span class="user-avatar">${initials(u.name, u.email)}</span>${esc(name)}</td>
+            <td><strong>${u.search_count}</strong></td>
+            <td>${u.active_days}</td>
+            <td><span class="badge ${rateClass(u.success_rate)}">${u.success_rate}%</span></td>
+            <td>${u.avg_response_ms}ms</td>
+            <td style="color:var(--text-muted)">${ago}</td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function timeAgo(iso) {
+    if (!iso) return 'never';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function loadAll() {
+    loadSummary();
+    loadDailyChart();
+    loadPopular();
+    loadFailed();
+    loadCommunities();
+    loadUsers();
+}
+
+// Initial load
+loadAll();
+// Auto-refresh every 60s
+setInterval(loadAll, 60000);
+</script>
+</body>
+</html>

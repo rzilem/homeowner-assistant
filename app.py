@@ -17,6 +17,7 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for, s
 from flask_session import Session
 import msal
 from google.cloud import storage as gcs_storage
+from datetime import timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -116,6 +117,76 @@ PBI_DATASET_ID = os.environ.get('PBI_DATASET_ID', 'e17e4241-37b7-4d12-a2e8-8f4e6
 
 # Use main homeowners table (has all fields) instead of lean copilot table
 TABLE_NAME = 'cr258_hoa_homeowners'
+
+# =============================================================================
+# SUPABASE CONFIGURATION (Search Analytics)
+# =============================================================================
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://hthaomwoizcyfeduptqm.supabase.co')
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
+
+_supabase_client = None
+
+def get_supabase():
+    """Get or create Supabase client (lazy init)."""
+    global _supabase_client
+    if _supabase_client is None and SUPABASE_SERVICE_KEY:
+        try:
+            from supabase import create_client
+            _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+            logger.info("Supabase client initialized for analytics")
+        except Exception as e:
+            logger.error(f"Failed to initialize Supabase: {e}")
+    return _supabase_client
+
+
+def log_search_analytics(
+    query_raw,
+    detected_type='auto',
+    community_filter=None,
+    community_detected=None,
+    homeowner_count=0,
+    document_count=0,
+    has_ai_answer=False,
+    ai_answer_text=None,
+    ai_answer_source=None,
+    response_time_ms=0,
+    search_mode='unified',
+    error_type=None,
+    error_message=None
+):
+    """Log search event to Supabase analytics (fire-and-forget in background thread)."""
+    def _log():
+        supabase = get_supabase()
+        if not supabase:
+            return
+        try:
+            # Get user from session
+            user = session.get('user', {}) if session else {}
+            user_email = user.get('preferred_username', user.get('email', None))
+            user_name = user.get('name', None)
+            session_id = session.get('session_id', str(uuid.uuid4())) if session else str(uuid.uuid4())
+
+            supabase.rpc('log_mw_search_event', {
+                'p_user_email': user_email,
+                'p_user_name': user_name,
+                'p_session_id': session_id,
+                'p_query_raw': query_raw,
+                'p_query_type': search_mode,
+                'p_detected_type': detected_type,
+                'p_community_filter': community_filter,
+                'p_community_detected': community_detected,
+                'p_homeowner_count': homeowner_count,
+                'p_document_count': document_count,
+                'p_has_ai_answer': has_ai_answer,
+                'p_ai_answer_text': (ai_answer_text or '')[:2000] if ai_answer_text else None,
+                'p_ai_answer_source': ai_answer_source,
+                'p_response_time_ms': response_time_ms
+            }).execute()
+        except Exception as e:
+            logger.error(f"Analytics log failed: {e}")
+
+    # Fire and forget - don't block the response
+    threading.Thread(target=_log, daemon=True).start()
 
 # =============================================================================
 # ACTIVE COMMUNITIES (Whitelist - only show results from active clients)
@@ -1659,6 +1730,7 @@ def unified_search():
     Smart unified search - auto-detects whether to search homeowners or documents.
     Returns structured results from both sources when appropriate.
     """
+    start_time = time.time()
     query = request.args.get('q', '').strip()
     mode = request.args.get('mode', 'auto')  # auto, homeowner(s), document(s), both
 
@@ -1675,7 +1747,8 @@ def unified_search():
         detected_type = mode
 
     # Extract community: prefer explicit parameter, fallback to query text extraction
-    community = request.args.get('community', '').strip() or extract_community_from_query(query)
+    community_filter = request.args.get('community', '').strip() or None
+    community = community_filter or extract_community_from_query(query)
 
     result = {
         'query': query,
@@ -1720,6 +1793,23 @@ def unified_search():
         suggestions = get_community_suggestions(potential_community)
         if suggestions:
             result['community_suggestions'] = suggestions
+
+    # --- Analytics logging ---
+    elapsed_ms = int((time.time() - start_time) * 1000)
+    ai_answer = result.get('ai_answer')
+    log_search_analytics(
+        query_raw=query,
+        detected_type=detected_type,
+        community_filter=community_filter,
+        community_detected=community,
+        homeowner_count=len(result.get('homeowners', [])),
+        document_count=len(result.get('documents', [])),
+        has_ai_answer=bool(ai_answer),
+        ai_answer_text=ai_answer.get('answer') if isinstance(ai_answer, dict) else None,
+        ai_answer_source=ai_answer.get('source') if isinstance(ai_answer, dict) else None,
+        response_time_ms=elapsed_ms,
+        search_mode='unified'
+    )
 
     return jsonify(result)
 
@@ -1768,6 +1858,7 @@ def search_homeowners_internal(query, community=None):
 @app.route('/api/documents/search')
 def search_documents():
     """Direct document search endpoint."""
+    start_time = time.time()
     query = request.args.get('q', '').strip()
     community = request.args.get('community', '').strip() or None
     top = int(request.args.get('top', 10))
@@ -1783,12 +1874,30 @@ def search_documents():
         if ai_result:
             result['ai_answer'] = ai_result
 
+    # --- Analytics logging ---
+    elapsed_ms = int((time.time() - start_time) * 1000)
+    ai_answer = result.get('ai_answer')
+    log_search_analytics(
+        query_raw=query,
+        detected_type='document',
+        community_filter=community,
+        community_detected=community,
+        homeowner_count=0,
+        document_count=len(result.get('documents', [])),
+        has_ai_answer=bool(ai_answer),
+        ai_answer_text=ai_answer.get('answer') if isinstance(ai_answer, dict) else None,
+        ai_answer_source=ai_answer.get('source') if isinstance(ai_answer, dict) else None,
+        response_time_ms=elapsed_ms,
+        search_mode='document'
+    )
+
     return jsonify(result)
 
 
 @app.route('/api/search')
 def search():
     """Universal homeowner search endpoint."""
+    start_time = time.time()
     query = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'auto')
     delinquent = request.args.get('delinquent', 'false').lower() == 'true'
@@ -1798,49 +1907,71 @@ def search():
         return jsonify({'error': 'Query required', 'homeowners': []}), 400
 
     # Auto-detect search type
+    detected_type = search_type
     if search_type == 'auto':
         digits = normalize_phone(query)
         upper_query = query.upper()
 
         # Check for phone number (7+ digits)
         if len(digits) >= 7:
-            search_type = 'phone'
+            detected_type = 'phone'
         # Check for account number patterns:
         # 1. Starts with known prefixes (FAL51515)
         # 2. Pattern like ABC12345 (3 letters + numbers)
         # 3. Just numbers that are 4-8 digits (could be account without prefix)
         elif upper_query.startswith(('FAL', 'AMC', 'AVA', 'CHA', 'HER', 'HIL', 'SOC', 'VIL', 'WES', 'VER', 'WIL', 'SAG', 'OAK', 'VIS')):
-            search_type = 'account'
+            detected_type = 'account'
         elif re.match(r'^[A-Z]{2,4}\d{3,8}$', upper_query):
             # Pattern: 2-4 letters followed by 3-8 digits (like FAL51515)
-            search_type = 'account'
+            detected_type = 'account'
         elif re.match(r'^\d{4,8}$', query):
             # Pure numbers 4-8 digits - likely account number without prefix
-            search_type = 'account'
+            detected_type = 'account'
         # Check for unit/lot patterns (unit 5, lot 12, #5, etc.)
         elif re.match(r'^(unit|lot|#)\s*\d+', query.lower()):
-            search_type = 'unit'
+            detected_type = 'unit'
         else:
             # Default to general search (searches name, address, AND account)
-            search_type = 'general'
+            detected_type = 'general'
 
     # Execute search - all types now support community_filter
-    if search_type == 'phone':
-        return search_by_phone(query, community_filter)
-    elif search_type == 'address':
-        return search_by_address(query, community_filter)
-    elif search_type == 'name':
-        return search_by_name(query, community_filter)
-    elif search_type == 'general':
-        return search_general(query, community_filter)
-    elif search_type == 'community':
-        return search_by_community(query, delinquent)
-    elif search_type == 'account':
-        return search_by_account(query, community_filter)
-    elif search_type == 'unit':
-        return search_by_unit(query, community_filter)
+    if detected_type == 'phone':
+        response = search_by_phone(query, community_filter)
+    elif detected_type == 'address':
+        response = search_by_address(query, community_filter)
+    elif detected_type == 'name':
+        response = search_by_name(query, community_filter)
+    elif detected_type == 'general':
+        response = search_general(query, community_filter)
+    elif detected_type == 'community':
+        response = search_by_community(query, delinquent)
+    elif detected_type == 'account':
+        response = search_by_account(query, community_filter)
+    elif detected_type == 'unit':
+        response = search_by_unit(query, community_filter)
     else:
         return jsonify({'error': 'Invalid search type', 'homeowners': []}), 400
+
+    # --- Analytics logging ---
+    elapsed_ms = int((time.time() - start_time) * 1000)
+    try:
+        resp_data = response.get_json() if hasattr(response, 'get_json') else {}
+        ho_count = len(resp_data.get('homeowners', [])) if resp_data else 0
+    except Exception:
+        ho_count = 0
+    log_search_analytics(
+        query_raw=query,
+        detected_type='homeowner',
+        community_filter=community_filter,
+        community_detected=community_filter,
+        homeowner_count=ho_count,
+        document_count=0,
+        has_ai_answer=False,
+        response_time_ms=elapsed_ms,
+        search_mode='homeowner'
+    )
+
+    return response
 
 
 def search_by_phone(phone, community_filter=None):
@@ -2582,6 +2713,511 @@ def pdf_proxy():
     except Exception as e:
         logger.error(f"PDF proxy error: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# SEARCH ANALYTICS API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/analytics/summary')
+def analytics_summary():
+    """Dashboard KPI summary - success rate, AI answers, response time, zero results."""
+    period = request.args.get('period', 'week')  # today, week, month
+
+    interval_map = {'today': '1 day', 'week': '7 days', 'month': '30 days'}
+    interval = interval_map.get(period, '7 days')
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        # Current period stats
+        current = supabase.table('mw_search_events') \
+            .select('id, is_success, has_ai_answer, response_time_ms, result_status, detected_type, user_email') \
+            .gte('searched_at', f'now() - interval \'{interval}\'') \
+            .execute()
+
+        rows = current.data or []
+        total = len(rows)
+
+        if total == 0:
+            return jsonify({
+                'period': period,
+                'total_searches': 0,
+                'unique_users': 0,
+                'success_rate': 0,
+                'ai_answer_rate': 0,
+                'avg_response_ms': 0,
+                'zero_result_rate': 0,
+                'search_breakdown': {'homeowner': 0, 'document': 0, 'both': 0},
+                'result_breakdown': {'found': 0, 'partial': 0, 'not_found': 0, 'error': 0}
+            })
+
+        success_count = sum(1 for r in rows if r.get('is_success'))
+        ai_count = sum(1 for r in rows if r.get('has_ai_answer'))
+        doc_searches = sum(1 for r in rows if r.get('detected_type') in ('document', 'both'))
+        zero_count = sum(1 for r in rows if r.get('result_status') == 'not_found')
+        response_times = [r['response_time_ms'] for r in rows if r.get('response_time_ms')]
+        unique_users = len(set(r.get('user_email') for r in rows if r.get('user_email')))
+
+        # Type breakdown
+        ho_count = sum(1 for r in rows if r.get('detected_type') == 'homeowner')
+        doc_count = sum(1 for r in rows if r.get('detected_type') == 'document')
+        both_count = sum(1 for r in rows if r.get('detected_type') == 'both')
+
+        # Result breakdown
+        found = sum(1 for r in rows if r.get('result_status') == 'found')
+        partial = sum(1 for r in rows if r.get('result_status') == 'partial')
+        not_found = sum(1 for r in rows if r.get('result_status') == 'not_found')
+        errors = sum(1 for r in rows if r.get('result_status') == 'error')
+
+        return jsonify({
+            'period': period,
+            'total_searches': total,
+            'unique_users': unique_users,
+            'success_rate': round(100.0 * success_count / total, 1),
+            'ai_answer_rate': round(100.0 * ai_count / max(doc_searches, 1), 1),
+            'avg_response_ms': round(sum(response_times) / max(len(response_times), 1)),
+            'zero_result_rate': round(100.0 * zero_count / total, 1),
+            'p95_response_ms': sorted(response_times)[int(len(response_times) * 0.95)] if response_times else 0,
+            'search_breakdown': {'homeowner': ho_count, 'document': doc_count, 'both': both_count},
+            'result_breakdown': {'found': found, 'partial': partial, 'not_found': not_found, 'error': errors}
+        })
+    except Exception as e:
+        logger.error(f"Analytics summary error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/popular-searches')
+def analytics_popular_searches():
+    """Top queries by volume."""
+    period = request.args.get('period', 'week')
+    limit = min(int(request.args.get('limit', 25)), 100)
+    community = request.args.get('community', '').strip() or None
+
+    interval_map = {'today': '1 day', 'week': '7 days', 'month': '30 days'}
+    interval = interval_map.get(period, '7 days')
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        query = supabase.table('mw_search_events') \
+            .select('query_normalized, is_success, has_ai_answer, response_time_ms, detected_type, community_detected, user_email') \
+            .gte('searched_at', f'now() - interval \'{interval}\'')
+
+        if community:
+            query = query.eq('community_detected', community)
+
+        result = query.execute()
+        rows = result.data or []
+
+        # Aggregate by query_normalized
+        query_stats = {}
+        for r in rows:
+            q = r.get('query_normalized', '')
+            if not q:
+                continue
+            if q not in query_stats:
+                query_stats[q] = {
+                    'query': q,
+                    'count': 0, 'success_count': 0, 'ai_count': 0,
+                    'response_times': [], 'users': set(),
+                    'detected_type': r.get('detected_type'),
+                    'community': r.get('community_detected')
+                }
+            s = query_stats[q]
+            s['count'] += 1
+            if r.get('is_success'):
+                s['success_count'] += 1
+            if r.get('has_ai_answer'):
+                s['ai_count'] += 1
+            if r.get('response_time_ms'):
+                s['response_times'].append(r['response_time_ms'])
+            if r.get('user_email'):
+                s['users'].add(r['user_email'])
+
+        # Sort by count descending
+        sorted_queries = sorted(query_stats.values(), key=lambda x: x['count'], reverse=True)[:limit]
+
+        searches = []
+        for i, s in enumerate(sorted_queries):
+            searches.append({
+                'rank': i + 1,
+                'query': s['query'],
+                'count': s['count'],
+                'unique_users': len(s['users']),
+                'success_rate': round(100.0 * s['success_count'] / s['count'], 1),
+                'avg_response_ms': round(sum(s['response_times']) / max(len(s['response_times']), 1)),
+                'has_ai_answer_rate': round(100.0 * s['ai_count'] / s['count'], 1),
+                'detected_type': s['detected_type'],
+                'community': s['community']
+            })
+
+        return jsonify({
+            'period': period,
+            'searches': searches,
+            'summary': {
+                'total_unique_queries': len(query_stats),
+                'total_searches': len(rows)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Popular searches error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/failed-searches')
+def analytics_failed_searches():
+    """Queries that returned zero results."""
+    status_filter = request.args.get('status', 'new')
+    limit = min(int(request.args.get('limit', 25)), 100)
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        query = supabase.table('mw_failed_searches') \
+            .select('*') \
+            .order('failure_count', desc=True) \
+            .limit(limit)
+
+        if status_filter != 'all':
+            query = query.eq('status', status_filter)
+
+        result = query.execute()
+        rows = result.data or []
+
+        failed = []
+        summary = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+        for r in rows:
+            fc = r.get('failure_count', 0)
+            uu = r.get('unique_users', 0)
+            priority = 'critical' if (fc >= 10 and uu >= 3) else \
+                       'high' if (fc >= 5 and uu >= 2) else \
+                       'medium' if fc >= 3 else 'low'
+            summary[priority] = summary.get(priority, 0) + 1
+
+            failed.append({
+                'id': r.get('id'),
+                'query': r.get('query_normalized'),
+                'examples': r.get('query_examples', []),
+                'failure_type': r.get('failure_type'),
+                'community': r.get('community_filter'),
+                'failure_count': fc,
+                'unique_users': uu,
+                'first_failed': r.get('first_failed_at'),
+                'last_failed': r.get('last_failed_at'),
+                'calculated_priority': priority,
+                'status': r.get('status'),
+                'resolution_notes': r.get('resolution_notes')
+            })
+
+        return jsonify({
+            'failed_searches': failed,
+            'summary': {
+                'total_patterns': len(rows),
+                **summary,
+                'total_impact': sum(r.get('failure_count', 0) for r in rows)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Failed searches error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/recommendations')
+def analytics_recommendations():
+    """Improvement recommendations."""
+    status_filter = request.args.get('status', 'new')
+    limit = min(int(request.args.get('limit', 25)), 100)
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        query = supabase.table('mw_improvement_recommendations') \
+            .select('*') \
+            .order('created_at', desc=True) \
+            .limit(limit)
+
+        if status_filter != 'all':
+            query = query.eq('status', status_filter)
+
+        result = query.execute()
+        return jsonify({'recommendations': result.data or []})
+    except Exception as e:
+        logger.error(f"Recommendations error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/recommendations/<rec_id>/status', methods=['PATCH'])
+def analytics_update_recommendation(rec_id):
+    """Update recommendation status."""
+    data = request.get_json() or {}
+    new_status = data.get('status')
+    if new_status not in ('new', 'acknowledged', 'in_progress', 'completed', 'rejected'):
+        return jsonify({'error': 'Invalid status'}), 400
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        update_data = {'status': new_status, 'updated_at': datetime.utcnow().isoformat()}
+        if new_status == 'completed':
+            update_data['completed_at'] = datetime.utcnow().isoformat()
+        if data.get('rejection_reason'):
+            update_data['rejection_reason'] = data['rejection_reason']
+        if data.get('assigned_to'):
+            update_data['assigned_to'] = data['assigned_to']
+
+        result = supabase.table('mw_improvement_recommendations') \
+            .update(update_data) \
+            .eq('id', rec_id) \
+            .execute()
+
+        return jsonify({'success': True, 'updated': result.data})
+    except Exception as e:
+        logger.error(f"Update recommendation error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/daily-stats')
+def analytics_daily_stats():
+    """Daily aggregated stats for charting."""
+    days = min(int(request.args.get('days', 7)), 90)
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        # Get raw events grouped by date
+        result = supabase.table('mw_search_events') \
+            .select('searched_at, is_success, has_ai_answer, response_time_ms, detected_type, user_email, result_status') \
+            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .order('searched_at', desc=False) \
+            .execute()
+
+        rows = result.data or []
+
+        # Group by date
+        daily = {}
+        for r in rows:
+            date_str = r.get('searched_at', '')[:10]  # YYYY-MM-DD
+            if not date_str:
+                continue
+            if date_str not in daily:
+                daily[date_str] = {
+                    'date': date_str, 'total': 0, 'success': 0, 'ai_answers': 0,
+                    'not_found': 0, 'response_times': [], 'users': set(),
+                    'homeowner': 0, 'document': 0
+                }
+            d = daily[date_str]
+            d['total'] += 1
+            if r.get('is_success'):
+                d['success'] += 1
+            if r.get('has_ai_answer'):
+                d['ai_answers'] += 1
+            if r.get('result_status') == 'not_found':
+                d['not_found'] += 1
+            if r.get('response_time_ms'):
+                d['response_times'].append(r['response_time_ms'])
+            if r.get('user_email'):
+                d['users'].add(r['user_email'])
+            if r.get('detected_type') == 'homeowner':
+                d['homeowner'] += 1
+            elif r.get('detected_type') in ('document', 'both'):
+                d['document'] += 1
+
+        # Format output
+        stats = []
+        for date_str in sorted(daily.keys()):
+            d = daily[date_str]
+            total = d['total']
+            stats.append({
+                'date': date_str,
+                'total_searches': total,
+                'unique_users': len(d['users']),
+                'success_rate': round(100.0 * d['success'] / max(total, 1), 1),
+                'ai_answer_rate': round(100.0 * d['ai_answers'] / max(total, 1), 1),
+                'zero_result_rate': round(100.0 * d['not_found'] / max(total, 1), 1),
+                'avg_response_ms': round(sum(d['response_times']) / max(len(d['response_times']), 1)),
+                'homeowner_searches': d['homeowner'],
+                'document_searches': d['document']
+            })
+
+        return jsonify({'days': days, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Daily stats error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/user-activity')
+def analytics_user_activity():
+    """Per-user search stats."""
+    days = min(int(request.args.get('days', 30)), 90)
+    limit = min(int(request.args.get('limit', 25)), 100)
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        result = supabase.table('mw_search_events') \
+            .select('user_email, user_name, is_success, response_time_ms, searched_at') \
+            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .not_.is_('user_email', 'null') \
+            .execute()
+
+        rows = result.data or []
+
+        # Group by user
+        users = {}
+        for r in rows:
+            email = r.get('user_email', '')
+            if not email:
+                continue
+            if email not in users:
+                users[email] = {
+                    'email': email, 'name': r.get('user_name', ''),
+                    'count': 0, 'success': 0, 'response_times': [],
+                    'dates': set(), 'last_search': ''
+                }
+            u = users[email]
+            u['count'] += 1
+            if r.get('is_success'):
+                u['success'] += 1
+            if r.get('response_time_ms'):
+                u['response_times'].append(r['response_time_ms'])
+            searched = r.get('searched_at', '')
+            u['dates'].add(searched[:10])
+            if searched > u['last_search']:
+                u['last_search'] = searched
+
+        # Sort by count
+        sorted_users = sorted(users.values(), key=lambda x: x['count'], reverse=True)[:limit]
+
+        user_list = []
+        for u in sorted_users:
+            user_list.append({
+                'email': u['email'],
+                'name': u['name'],
+                'search_count': u['count'],
+                'active_days': len(u['dates']),
+                'success_rate': round(100.0 * u['success'] / max(u['count'], 1), 1),
+                'avg_response_ms': round(sum(u['response_times']) / max(len(u['response_times']), 1)),
+                'last_search': u['last_search']
+            })
+
+        return jsonify({'period_days': days, 'users': user_list})
+    except Exception as e:
+        logger.error(f"User activity error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/community-patterns')
+def analytics_community_patterns():
+    """Per-community search analytics."""
+    days = min(int(request.args.get('days', 30)), 90)
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        result = supabase.table('mw_search_events') \
+            .select('community_detected, is_success, has_ai_answer, document_count, user_email') \
+            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .not_.is_('community_detected', 'null') \
+            .execute()
+
+        rows = result.data or []
+
+        # Group by community
+        communities = {}
+        for r in rows:
+            c = r.get('community_detected', '')
+            if not c:
+                continue
+            if c not in communities:
+                communities[c] = {
+                    'community': c, 'total': 0, 'success': 0,
+                    'ai_answers': 0, 'users': set()
+                }
+            cm = communities[c]
+            cm['total'] += 1
+            if r.get('is_success'):
+                cm['success'] += 1
+            if r.get('has_ai_answer'):
+                cm['ai_answers'] += 1
+            if r.get('user_email'):
+                cm['users'].add(r['user_email'])
+
+        # Sort by total
+        sorted_communities = sorted(communities.values(), key=lambda x: x['total'], reverse=True)
+
+        comm_list = []
+        for cm in sorted_communities:
+            comm_list.append({
+                'community': cm['community'],
+                'total_searches': cm['total'],
+                'unique_users': len(cm['users']),
+                'success_rate': round(100.0 * cm['success'] / max(cm['total'], 1), 1),
+                'ai_answer_rate': round(100.0 * cm['ai_answers'] / max(cm['total'], 1), 1)
+            })
+
+        return jsonify({'period_days': days, 'communities': comm_list})
+    except Exception as e:
+        logger.error(f"Community patterns error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics/failed-searches/<search_id>/status', methods=['PATCH'])
+def analytics_update_failed_search(search_id):
+    """Update failed search status (acknowledge, resolve, etc.)."""
+    data = request.get_json() or {}
+    new_status = data.get('status')
+    if new_status not in ('new', 'acknowledged', 'in_progress', 'resolved'):
+        return jsonify({'error': 'Invalid status'}), 400
+
+    supabase = get_supabase()
+    if not supabase:
+        return jsonify({'error': 'Analytics not configured'}), 503
+
+    try:
+        update_data = {'status': new_status}
+        if new_status == 'resolved':
+            update_data['resolved_at'] = datetime.utcnow().isoformat()
+        if data.get('resolution_notes'):
+            update_data['resolution_notes'] = data['resolution_notes']
+        if data.get('assigned_to'):
+            update_data['assigned_to'] = data['assigned_to']
+
+        result = supabase.table('mw_failed_searches') \
+            .update(update_data) \
+            .eq('id', search_id) \
+            .execute()
+
+        return jsonify({'success': True, 'updated': result.data})
+    except Exception as e:
+        logger.error(f"Update failed search error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# ANALYTICS DASHBOARD PAGE
+# =============================================================================
+
+@app.route('/analytics')
+def analytics_page():
+    """Serve the search analytics dashboard."""
+    return render_template('analytics.html')
 
 
 # =============================================================================
