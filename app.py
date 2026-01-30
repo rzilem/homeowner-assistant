@@ -11,13 +11,12 @@ import json
 import uuid
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, jsonify, request, render_template, redirect, url_for, session, Response
 from flask_session import Session
 import msal
 from google.cloud import storage as gcs_storage
-from datetime import timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -2724,8 +2723,8 @@ def analytics_summary():
     """Dashboard KPI summary - success rate, AI answers, response time, zero results."""
     period = request.args.get('period', 'week')  # today, week, month
 
-    interval_map = {'today': '1 day', 'week': '7 days', 'month': '30 days'}
-    interval = interval_map.get(period, '7 days')
+    days_map = {'today': 1, 'week': 7, 'month': 30}
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days_map.get(period, 7))).isoformat()
 
     supabase = get_supabase()
     if not supabase:
@@ -2735,7 +2734,7 @@ def analytics_summary():
         # Current period stats
         current = supabase.table('mw_search_events') \
             .select('id, is_success, has_ai_answer, response_time_ms, result_status, detected_type, user_email') \
-            .gte('searched_at', f'now() - interval \'{interval}\'') \
+            .gte('searched_at', cutoff) \
             .execute()
 
         rows = current.data or []
@@ -2796,8 +2795,8 @@ def analytics_popular_searches():
     limit = min(int(request.args.get('limit', 25)), 100)
     community = request.args.get('community', '').strip() or None
 
-    interval_map = {'today': '1 day', 'week': '7 days', 'month': '30 days'}
-    interval = interval_map.get(period, '7 days')
+    days_map = {'today': 1, 'week': 7, 'month': 30}
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days_map.get(period, 7))).isoformat()
 
     supabase = get_supabase()
     if not supabase:
@@ -2806,7 +2805,7 @@ def analytics_popular_searches():
     try:
         query = supabase.table('mw_search_events') \
             .select('query_normalized, is_success, has_ai_answer, response_time_ms, detected_type, community_detected, user_email') \
-            .gte('searched_at', f'now() - interval \'{interval}\'')
+            .gte('searched_at', cutoff)
 
         if community:
             query = query.eq('community_detected', community)
@@ -2998,9 +2997,10 @@ def analytics_daily_stats():
 
     try:
         # Get raw events grouped by date
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         result = supabase.table('mw_search_events') \
             .select('searched_at, is_success, has_ai_answer, response_time_ms, detected_type, user_email, result_status') \
-            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .gte('searched_at', cutoff) \
             .order('searched_at', desc=False) \
             .execute()
 
@@ -3069,9 +3069,10 @@ def analytics_user_activity():
         return jsonify({'error': 'Analytics not configured'}), 503
 
     try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         result = supabase.table('mw_search_events') \
             .select('user_email, user_name, is_success, response_time_ms, searched_at') \
-            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .gte('searched_at', cutoff) \
             .not_.is_('user_email', 'null') \
             .execute()
 
@@ -3131,9 +3132,10 @@ def analytics_community_patterns():
         return jsonify({'error': 'Analytics not configured'}), 503
 
     try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         result = supabase.table('mw_search_events') \
             .select('community_detected, is_success, has_ai_answer, document_count, user_email') \
-            .gte('searched_at', f'now() - interval \'{days} days\'') \
+            .gte('searched_at', cutoff) \
             .not_.is_('community_detected', 'null') \
             .execute()
 
