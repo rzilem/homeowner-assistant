@@ -931,14 +931,22 @@ def search_azure_documents(query, community=None, top=10):
     filters.append("not search.ismatch('_To Be Filed', 'file_path')")
 
     # Filter by community using PHRASE matching (quotes prevent word-level matching)
+    # Also include global/shared documents (stored in _Global Documents folder)
     if community:
         normalized = normalize_community_name(community)
         if normalized:
             # Use phrase matching with quotes to prevent "Heritage Park" matching "Central Park"
             # Escape single quotes in the normalized name
             safe_normalized = normalized.replace("'", "''")
-            filters.append(f'search.ismatch(\'"{safe_normalized}"\', \'community_name\')')
-            logger.info(f"Community filter: '{community}' -> phrase: '\"{safe_normalized}\"'")
+            # Include community-specific docs OR global shared docs
+            community_filter = (
+                f'(search.ismatch(\'"{safe_normalized}"\', \'community_name\') or '
+                f'search.ismatch(\'"_global"\', \'community_name\') or '
+                f'search.ismatch(\'"all communities"\', \'community_name\') or '
+                f'search.ismatch(\'"_global documents"\', \'file_path\'))'
+            )
+            filters.append(community_filter)
+            logger.info(f"Community filter: '{community}' -> phrase: '\"{safe_normalized}\"' (+ global docs)")
 
     if filters:
         payload["filter"] = " and ".join(filters)
