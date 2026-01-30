@@ -2251,6 +2251,95 @@ def suggest():
 
 
 # =============================================================================
+# PDF PROXY (for PDF.js thumbnail rendering)
+# =============================================================================
+
+_graph_token_cache = {'token': None, 'expires': 0}
+
+def get_graph_token():
+    """Get access token for Microsoft Graph API (SharePoint file access)."""
+    if _graph_token_cache['token'] and time.time() < _graph_token_cache['expires']:
+        return _graph_token_cache['token']
+
+    if not MS_CLIENT_SECRET:
+        logger.warning("MS_CLIENT_SECRET not configured for Graph API")
+        return None
+
+    try:
+        app_auth = msal.ConfidentialClientApplication(
+            MS_CLIENT_ID,
+            authority=MS_AUTHORITY,
+            client_credential=MS_CLIENT_SECRET
+        )
+        result = app_auth.acquire_token_for_client(
+            scopes=['https://graph.microsoft.com/.default']
+        )
+        if 'access_token' in result:
+            _graph_token_cache['token'] = result['access_token']
+            _graph_token_cache['expires'] = time.time() + 3000
+            return result['access_token']
+        else:
+            logger.error(f"Graph token error: {result.get('error_description', 'Unknown')}")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to get Graph token: {e}")
+        return None
+
+
+@app.route('/api/pdf-proxy')
+def pdf_proxy():
+    """Proxy PDF files from SharePoint for PDF.js rendering.
+    Fetches via MS Graph API to handle auth, returns raw PDF bytes.
+    """
+    import requests as req
+
+    url = request.args.get('url', '')
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+
+    # Extract relative path from SharePoint URL
+    # URL format: https://psprop.sharepoint.com/sites/AssociationDocs/Association%20Documents/Community/folder/file.pdf
+    match = re.search(r'/sites/AssociationDocs/(.+)', url)
+    if not match:
+        return jsonify({'error': 'Invalid SharePoint URL'}), 400
+
+    relative_path = match.group(1)
+    # URL-decode the path for Graph API
+    from urllib.parse import unquote
+    relative_path = unquote(relative_path)
+
+    token = get_graph_token()
+    if not token:
+        return jsonify({'error': 'Authentication failed'}), 503
+
+    # Use Graph API to get file content
+    # Site: psprop.sharepoint.com/sites/AssociationDocs
+    graph_url = f"https://graph.microsoft.com/v1.0/sites/psprop.sharepoint.com:/sites/AssociationDocs:/drive/root:/{relative_path}:/content"
+
+    try:
+        resp = req.get(graph_url, headers={
+            'Authorization': f'Bearer {token}'
+        }, stream=True, timeout=15)
+
+        if resp.status_code == 200:
+            from flask import Response
+            return Response(
+                resp.content,
+                content_type='application/pdf',
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            )
+        else:
+            logger.error(f"Graph API file fetch failed: {resp.status_code} - {resp.text[:200]}")
+            return jsonify({'error': f'File fetch failed: {resp.status_code}'}), resp.status_code
+    except Exception as e:
+        logger.error(f"PDF proxy error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 

@@ -9,6 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
     <style>
         :root {
             /* LinkedIn-inspired Blue */
@@ -1544,6 +1550,81 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         }
 
+        /* PDF Thumbnail Preview */
+        .pdf-thumbnail-section {
+            padding: 16px 24px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            text-align: center;
+        }
+        .pdf-thumbnail-wrapper {
+            display: inline-block;
+            position: relative;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: white;
+            max-width: 100%;
+        }
+        .pdf-thumbnail-wrapper canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .pdf-thumbnail-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 40px 20px;
+            color: var(--gray-400);
+            font-size: 0.82rem;
+        }
+        .pdf-thumbnail-loading i {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .pdf-thumbnail-error {
+            padding: 20px;
+            color: var(--gray-400);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        .pdf-thumbnail-label {
+            font-size: 0.7rem;
+            color: var(--gray-400);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .doc-preview-body {
+            display: flex;
+            flex-direction: column;
+        }
+        .doc-preview-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 24px;
+            background: var(--gray-50);
+            font-size: 0.7rem;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        .doc-preview-divider::before,
+        .doc-preview-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-200);
+        }
+
         .doc-preview-footer {
             display: flex;
             align-items: center;
@@ -3072,7 +3153,7 @@
 
                     <!-- Inline Source Document Preview -->
                     ${hasSourceContent ? `
-                    <div id="${previewId}" class="doc-preview-panel ai-source-panel">
+                    <div id="${previewId}" class="doc-preview-panel ai-source-panel" data-pdf-url="${sourceUrl ? escapeHtml(sourceUrl) : ''}">
                         <div class="doc-preview-inner">
                             <div class="doc-preview-toolbar">
                                 <div class="doc-preview-toolbar-left">
@@ -3085,11 +3166,20 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="doc-preview-content">
-                                <div class="doc-preview-content-text">${sourceContentHtml}</div>
+                            <div class="doc-preview-body">
+                                <!-- PDF Thumbnail -->
+                                <div class="pdf-thumbnail-section" id="${previewId}-pdf">
+                                    <div class="pdf-thumbnail-loading">
+                                        <i class="fas fa-spinner"></i> Loading document preview...
+                                    </div>
+                                </div>
+                                <div class="doc-preview-divider">Relevant Excerpt</div>
+                                <div class="doc-preview-content">
+                                    <div class="doc-preview-content-text">${sourceContentHtml}</div>
+                                </div>
                             </div>
                             <div class="doc-preview-footer">
-                                <span>Showing relevant excerpt from source document</span>
+                                <span>Page 1 preview &middot; Highlighted excerpt below</span>
                                 ${sourceUrl ? `
                                     <a href="${escapeHtml(sourceUrl)}" target="_blank">
                                         <i class="fas fa-external-link-alt"></i> Open full document in SharePoint
@@ -3387,7 +3477,7 @@
                     </div>
 
                     <!-- Expandable Preview Panel -->
-                    <div id="${previewId}" class="doc-preview-panel">
+                    <div id="${previewId}" class="doc-preview-panel" data-pdf-url="${hasUrl ? escapeHtml(doc.url) : ''}">
                         <div class="doc-preview-inner">
                             <div class="doc-preview-toolbar">
                                 <div class="doc-preview-toolbar-left">
@@ -3400,13 +3490,22 @@
                                     </button>
                                 </div>
                             </div>
-                            ${contentHtml ? `
-                                <div class="doc-preview-content">
-                                    <div class="doc-preview-content-text">${contentHtml}</div>
+                            <div class="doc-preview-body">
+                                <!-- PDF Thumbnail -->
+                                <div class="pdf-thumbnail-section" id="${previewId}-pdf">
+                                    <div class="pdf-thumbnail-loading">
+                                        <i class="fas fa-spinner"></i> Loading document preview...
+                                    </div>
                                 </div>
-                            ` : ''}
+                                ${contentHtml ? `
+                                    <div class="doc-preview-divider">Relevant Excerpt</div>
+                                    <div class="doc-preview-content">
+                                        <div class="doc-preview-content-text">${contentHtml}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
                             <div class="doc-preview-footer">
-                                <span>Showing indexed excerpt &middot; ${rawContent.length} characters</span>
+                                <span>Page 1 preview &middot; Highlighted excerpt below</span>
                                 ${hasUrl ? `
                                     <a href="${escapeHtml(doc.url)}" target="_blank">
                                         <i class="fas fa-external-link-alt"></i> Open full document in SharePoint
@@ -3417,6 +3516,68 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Track which panels already have PDF thumbnails loaded
+        const _pdfLoadedPanels = new Set();
+
+        function renderPdfThumbnail(panelId) {
+            if (_pdfLoadedPanels.has(panelId)) return; // Already loaded
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            const pdfUrl = panel.getAttribute('data-pdf-url');
+            const pdfContainer = document.getElementById(panelId + '-pdf');
+            if (!pdfContainer) return;
+
+            // Only try for PDF files
+            if (!pdfUrl || !pdfUrl.toLowerCase().match(/\.pdf/)) {
+                pdfContainer.innerHTML = '<div class="pdf-thumbnail-error"><i class="fas fa-file-alt"></i> Text-based document &mdash; excerpt shown below</div>';
+                _pdfLoadedPanels.add(panelId);
+                return;
+            }
+
+            if (typeof pdfjsLib === 'undefined') {
+                pdfContainer.innerHTML = '<div class="pdf-thumbnail-error">PDF preview unavailable</div>';
+                _pdfLoadedPanels.add(panelId);
+                return;
+            }
+
+            _pdfLoadedPanels.add(panelId);
+
+            // Fetch PDF through our proxy to handle SharePoint auth
+            const proxyUrl = '/api/pdf-proxy?url=' + encodeURIComponent(pdfUrl);
+
+            pdfjsLib.getDocument(proxyUrl).promise.then(function(pdf) {
+                // Render page 1
+                pdf.getPage(1).then(function(page) {
+                    // Scale to fit ~500px width
+                    const desiredWidth = 500;
+                    const unscaledViewport = page.getViewport({ scale: 1 });
+                    const scale = desiredWidth / unscaledViewport.width;
+                    const viewport = page.getViewport({ scale: scale });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+
+                    page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+                        pdfContainer.innerHTML = '';
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'pdf-thumbnail-wrapper';
+                        wrapper.appendChild(canvas);
+                        pdfContainer.appendChild(wrapper);
+                        const label = document.createElement('div');
+                        label.className = 'pdf-thumbnail-label';
+                        label.textContent = 'Page 1 of ' + pdf.numPages;
+                        pdfContainer.appendChild(label);
+                    });
+                });
+            }).catch(function(err) {
+                console.warn('PDF thumbnail failed:', err);
+                pdfContainer.innerHTML = '<div class="pdf-thumbnail-error"><i class="fas fa-file-pdf"></i> Preview unavailable &mdash; <a href="' + pdfUrl + '" target="_blank" style="color:var(--primary)">open in SharePoint</a></div>';
+            });
         }
 
         function toggleDocPreview(previewId, btn) {
@@ -3437,6 +3598,8 @@
                 });
                 panel.classList.add('open');
                 if (btn) btn.classList.add('active');
+                // Render PDF thumbnail on first open
+                renderPdfThumbnail(previewId);
                 // Scroll the panel into view smoothly
                 setTimeout(() => {
                     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3460,6 +3623,8 @@
                 });
                 panel.classList.add('open');
                 if (btn) btn.classList.add('active');
+                // Render PDF thumbnail on first open
+                renderPdfThumbnail(previewId);
                 setTimeout(() => {
                     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }, 350);
