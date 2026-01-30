@@ -10,10 +10,13 @@ import time
 import json
 import uuid
 import logging
+import threading
+from datetime import datetime
 from functools import wraps
-from flask import Flask, jsonify, request, render_template, redirect, url_for, session
+from flask import Flask, jsonify, request, render_template, redirect, url_for, session, Response
 from flask_session import Session
 import msal
+from google.cloud import storage as gcs_storage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -143,6 +146,87 @@ def load_active_communities():
 
 # Load on startup
 load_active_communities()
+
+
+# =============================================================================
+# GAMIFICATION PERSISTENCE (Google Cloud Storage)
+# =============================================================================
+
+GCS_BUCKET = 'pspm-community-images'
+GCS_STATS_FILE = 'wizard/gamification-stats.json'
+
+_gamification_data = {}
+_gamification_lock = threading.Lock()
+_gamification_loaded = False
+
+
+def _load_gamification_data():
+    """Load gamification data from GCS into memory. Called once on first access."""
+    global _gamification_data, _gamification_loaded
+    if _gamification_loaded:
+        return
+    try:
+        client = gcs_storage.Client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(GCS_STATS_FILE)
+        if blob.exists():
+            content = blob.download_as_text()
+            _gamification_data = json.loads(content)
+            logger.info(f"Loaded gamification data: {len(_gamification_data)} users")
+        else:
+            _gamification_data = {}
+            logger.info("No gamification data file found, starting fresh")
+    except Exception as e:
+        logger.error(f"Failed to load gamification data from GCS: {e}")
+        _gamification_data = {}
+    _gamification_loaded = True
+
+
+def _save_gamification_data():
+    """Write the full gamification dict to GCS."""
+    try:
+        client = gcs_storage.Client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(GCS_STATS_FILE)
+        blob.upload_from_string(
+            json.dumps(_gamification_data, indent=2),
+            content_type='application/json'
+        )
+    except Exception as e:
+        logger.error(f"Failed to save gamification data to GCS: {e}")
+
+
+def get_user_stats(email):
+    """Get stats for a specific user."""
+    with _gamification_lock:
+        _load_gamification_data()
+        return _gamification_data.get(email.lower())
+
+
+def save_user_stats(email, stats):
+    """Save stats for a specific user and persist to GCS."""
+    with _gamification_lock:
+        _load_gamification_data()
+        _gamification_data[email.lower()] = stats
+        _save_gamification_data()
+
+
+def create_default_stats(email, user):
+    """Create a new user stats entry with defaults."""
+    return {
+        'email': email.lower(),
+        'name': user.get('name', ''),
+        'first_name': user.get('first_name', ''),
+        'search_count': 0,
+        'wizard_unlocked': False,
+        'wizard_active': False,
+        'voice_unlocked': False,
+        'voice_active': False,
+        'shown_milestones': [],
+        'first_search_at': None,
+        'last_search_at': None,
+        'migrated_from_local': False
+    }
 
 def is_active_community(community_name):
     """Check if a community is in the active whitelist."""
@@ -2248,6 +2332,167 @@ def suggest():
         'query': query,
         'suggestions': suggestions[:8]
     })
+
+
+# =============================================================================
+# GAMIFICATION API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/gamification/stats')
+def get_gamification_stats():
+    """Get current user's gamification stats."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'stats': None, 'is_new_user': True})
+
+    email = user['email'].lower()
+    stats = get_user_stats(email)
+
+    if stats is None:
+        stats = create_default_stats(email, user)
+        save_user_stats(email, stats)
+
+    return jsonify({'stats': stats, 'is_new_user': stats.get('search_count', 0) == 0})
+
+
+@app.route('/api/gamification/increment', methods=['POST'])
+def increment_gamification():
+    """Increment search count. Stats are permanent - only goes up."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    email = user['email'].lower()
+    stats = get_user_stats(email)
+    if stats is None:
+        stats = create_default_stats(email, user)
+
+    stats['search_count'] = stats.get('search_count', 0) + 1
+    now = datetime.utcnow().isoformat() + 'Z'
+    stats['last_search_at'] = now
+    if not stats.get('first_search_at'):
+        stats['first_search_at'] = now
+
+    # Update name from session in case it changed
+    stats['name'] = user.get('name', '')
+    stats['first_name'] = user.get('first_name', '')
+
+    # Check milestone unlocks (permanent - once unlocked, stays unlocked)
+    count = stats['search_count']
+    if count >= 30 and not stats.get('wizard_unlocked'):
+        stats['wizard_unlocked'] = True
+        stats['wizard_active'] = True
+    if count >= 75 and not stats.get('voice_unlocked'):
+        stats['voice_unlocked'] = True
+
+    save_user_stats(email, stats)
+    return jsonify({'stats': stats})
+
+
+@app.route('/api/gamification/migrate', methods=['POST'])
+def migrate_gamification():
+    """One-time migration from localStorage to server."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    email = user['email'].lower()
+    stats = get_user_stats(email)
+    if stats is None:
+        stats = create_default_stats(email, user)
+
+    if stats.get('migrated_from_local'):
+        return jsonify({'stats': stats, 'migrated': False})
+
+    local_data = request.get_json()
+    if not local_data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    # Merge: use max for count, OR for booleans, union for arrays
+    local_count = int(local_data.get('search_count', 0))
+    stats['search_count'] = max(stats.get('search_count', 0), local_count)
+    stats['wizard_unlocked'] = stats.get('wizard_unlocked', False) or bool(local_data.get('wizard_unlocked'))
+    stats['wizard_active'] = stats.get('wizard_active', False) or bool(local_data.get('wizard_active'))
+    stats['voice_unlocked'] = stats.get('voice_unlocked', False) or bool(local_data.get('voice_unlocked'))
+    stats['voice_active'] = stats.get('voice_active', False) or bool(local_data.get('voice_active'))
+
+    server_milestones = set(stats.get('shown_milestones', []))
+    local_milestones = set(local_data.get('shown_milestones', []))
+    stats['shown_milestones'] = sorted(list(server_milestones | local_milestones))
+
+    stats['migrated_from_local'] = True
+    now = datetime.utcnow().isoformat() + 'Z'
+    if not stats.get('first_search_at') and local_count > 0:
+        stats['first_search_at'] = now
+    stats['last_search_at'] = now
+
+    save_user_stats(email, stats)
+    logger.info(f"Migrated gamification for {email}: {local_count} local searches merged")
+    return jsonify({'stats': stats, 'migrated': True})
+
+
+@app.route('/api/gamification/toggle', methods=['POST'])
+def toggle_gamification_feature():
+    """Toggle wizard_active or voice_active."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    feature = data.get('feature') if data else None
+    # Accept both 'wizard_active' and 'wizard' formats
+    if feature in ('wizard_active', 'wizard'):
+        key_unlock = 'wizard_unlocked'
+        key_active = 'wizard_active'
+    elif feature in ('voice_active', 'voice'):
+        key_unlock = 'voice_unlocked'
+        key_active = 'voice_active'
+    else:
+        return jsonify({'error': 'Invalid feature'}), 400
+
+    active_val = data.get('active')  # explicit true/false from frontend
+
+    email = user['email'].lower()
+    stats = get_user_stats(email)
+    if stats is None:
+        stats = create_default_stats(email, user)
+
+    if not stats.get(key_unlock, False):
+        return jsonify({'error': f'{feature} not unlocked yet'}), 403
+
+    # Use explicit value if provided, otherwise toggle
+    if active_val is not None:
+        stats[key_active] = bool(active_val)
+    else:
+        stats[key_active] = not stats.get(key_active, False)
+
+    save_user_stats(email, stats)
+    return jsonify({'stats': stats})
+
+
+@app.route('/api/gamification/milestone-shown', methods=['POST'])
+def record_milestone_shown():
+    """Record that a milestone celebration was displayed to the user."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    milestone_count = data.get('milestone_count') if data else None
+    if not isinstance(milestone_count, int):
+        return jsonify({'error': 'Invalid milestone_count'}), 400
+
+    email = user['email'].lower()
+    stats = get_user_stats(email)
+    if stats is None:
+        stats = create_default_stats(email, user)
+
+    shown = set(stats.get('shown_milestones', []))
+    shown.add(milestone_count)
+    stats['shown_milestones'] = sorted(list(shown))
+
+    save_user_stats(email, stats)
+    return jsonify({'stats': stats})
 
 
 # =============================================================================

@@ -2308,6 +2308,14 @@
             color: #8b5cf6;
         }
         .rank-display.visible { display: inline-flex; }
+        .rank-count {
+            background: rgba(139, 92, 246, 0.2);
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
 
         /* Progress bar (search count) */
         .search-progress {
@@ -4145,22 +4153,36 @@
             currentRank: null
         };
 
-        function initGamification() {
-            // Check for reset URL parameter
+        async function initGamification() {
+            // Check for reset URL parameter (only clears localStorage cache)
             if (new URLSearchParams(window.location.search).get('reset') === 'wizard') {
-                resetWizard();
-                // Clean up URL
+                clearLocalGamification();
                 window.history.replaceState({}, '', window.location.pathname);
-                return;
             }
 
-            // Load persisted state
-            gamificationState.searchCount = parseInt(localStorage.getItem('mw_search_count') || '0');
-            gamificationState.wizardUnlocked = localStorage.getItem('mw_wizard_unlocked') === 'true';
-            gamificationState.wizardActive = localStorage.getItem('mw_wizard_active') === 'true';
-            gamificationState.voiceUnlocked = localStorage.getItem('mw_voice_unlocked') === 'true';
-            gamificationState.voiceActive = localStorage.getItem('mw_voice_active') === 'true';
-            gamificationState.shownMilestones = JSON.parse(localStorage.getItem('mw_shown_milestones') || '[]');
+            // Load from server (persisted per-user via Microsoft SSO)
+            try {
+                const resp = await fetch('/api/gamification/stats');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const stats = data.stats || {};
+                    gamificationState.searchCount = stats.search_count || 0;
+                    gamificationState.wizardUnlocked = stats.wizard_unlocked || false;
+                    gamificationState.wizardActive = stats.wizard_active || false;
+                    gamificationState.voiceUnlocked = stats.voice_unlocked || false;
+                    gamificationState.voiceActive = stats.voice_active || false;
+                    gamificationState.shownMilestones = stats.shown_milestones || [];
+
+                    // One-time migration from localStorage to server
+                    await migrateLocalStorage();
+                } else {
+                    // Fallback to localStorage if server unavailable
+                    loadFromLocalStorage();
+                }
+            } catch (e) {
+                console.warn('Gamification server unavailable, using localStorage fallback', e);
+                loadFromLocalStorage();
+            }
 
             // Restore visual state
             updateRankDisplay();
@@ -4201,6 +4223,61 @@
             updateLogoLevel();
         }
 
+        function loadFromLocalStorage() {
+            gamificationState.searchCount = parseInt(localStorage.getItem('mw_search_count') || '0');
+            gamificationState.wizardUnlocked = localStorage.getItem('mw_wizard_unlocked') === 'true';
+            gamificationState.wizardActive = localStorage.getItem('mw_wizard_active') === 'true';
+            gamificationState.voiceUnlocked = localStorage.getItem('mw_voice_unlocked') === 'true';
+            gamificationState.voiceActive = localStorage.getItem('mw_voice_active') === 'true';
+            gamificationState.shownMilestones = JSON.parse(localStorage.getItem('mw_shown_milestones') || '[]');
+        }
+
+        async function migrateLocalStorage() {
+            // Check if there's localStorage data to migrate
+            const localCount = parseInt(localStorage.getItem('mw_search_count') || '0');
+            if (localCount === 0) return; // Nothing to migrate
+
+            try {
+                const resp = await fetch('/api/gamification/migrate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        search_count: localCount,
+                        wizard_unlocked: localStorage.getItem('mw_wizard_unlocked') === 'true',
+                        wizard_active: localStorage.getItem('mw_wizard_active') === 'true',
+                        voice_unlocked: localStorage.getItem('mw_voice_unlocked') === 'true',
+                        voice_active: localStorage.getItem('mw_voice_active') === 'true',
+                        shown_milestones: JSON.parse(localStorage.getItem('mw_shown_milestones') || '[]')
+                    })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const stats = data.stats || {};
+                    // Update local state with merged server result
+                    gamificationState.searchCount = stats.search_count || 0;
+                    gamificationState.wizardUnlocked = stats.wizard_unlocked || false;
+                    gamificationState.wizardActive = stats.wizard_active || false;
+                    gamificationState.voiceUnlocked = stats.voice_unlocked || false;
+                    gamificationState.voiceActive = stats.voice_active || false;
+                    gamificationState.shownMilestones = stats.shown_milestones || [];
+                    // Clear localStorage after successful migration
+                    clearLocalGamification();
+                    console.log('Gamification migrated to server successfully');
+                }
+            } catch (e) {
+                console.warn('Migration failed, will retry next load', e);
+            }
+        }
+
+        function clearLocalGamification() {
+            localStorage.removeItem('mw_search_count');
+            localStorage.removeItem('mw_wizard_unlocked');
+            localStorage.removeItem('mw_wizard_active');
+            localStorage.removeItem('mw_voice_unlocked');
+            localStorage.removeItem('mw_voice_active');
+            localStorage.removeItem('mw_shown_milestones');
+        }
+
         function updateLogoLevel(animate) {
             const logoIcon = document.getElementById('logoIcon');
             if (!logoIcon) return;
@@ -4230,17 +4307,25 @@
         }
 
         function saveGamificationState() {
-            localStorage.setItem('mw_search_count', gamificationState.searchCount.toString());
-            localStorage.setItem('mw_wizard_unlocked', gamificationState.wizardUnlocked.toString());
-            localStorage.setItem('mw_wizard_active', gamificationState.wizardActive.toString());
-            localStorage.setItem('mw_voice_unlocked', gamificationState.voiceUnlocked.toString());
-            localStorage.setItem('mw_voice_active', gamificationState.voiceActive.toString());
-            localStorage.setItem('mw_shown_milestones', JSON.stringify(gamificationState.shownMilestones));
+            // No-op: server handles persistence via /api/gamification/* endpoints
         }
 
-        function incrementSearchCount() {
-            gamificationState.searchCount++;
-            saveGamificationState();
+        async function incrementSearchCount() {
+            try {
+                const resp = await fetch('/api/gamification/increment', { method: 'POST' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const s = data.stats || {};
+                    gamificationState.searchCount = s.search_count || gamificationState.searchCount;
+                    gamificationState.wizardUnlocked = s.wizard_unlocked || gamificationState.wizardUnlocked;
+                    gamificationState.voiceUnlocked = s.voice_unlocked || gamificationState.voiceUnlocked;
+                    gamificationState.shownMilestones = s.shown_milestones || gamificationState.shownMilestones;
+                }
+            } catch (e) {
+                // Fallback: increment locally if server unavailable
+                gamificationState.searchCount++;
+                console.warn('Increment failed, local fallback', e);
+            }
             updateRankDisplay();
             checkMilestones();
 
@@ -4255,7 +4340,12 @@
                 if (gamificationState.searchCount >= milestone.count &&
                     !gamificationState.shownMilestones.includes(milestone.count)) {
                     gamificationState.shownMilestones.push(milestone.count);
-                    saveGamificationState();
+                    // Record on server (fire-and-forget)
+                    fetch('/api/gamification/milestone-shown', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ milestone_count: milestone.count })
+                    }).catch(() => {});
                     setTimeout(() => showMilestone(milestone), 800);
                     break;  // Show one at a time
                 }
@@ -4405,7 +4495,7 @@
 
         function unlockWizardMode() {
             gamificationState.wizardUnlocked = true;
-            saveGamificationState();
+            // Server already set wizard_unlocked=true during increment
 
             const wizToggle = document.getElementById('wizardToggle');
             if (wizToggle) wizToggle.style.display = 'flex';
@@ -4416,17 +4506,33 @@
 
         function unlockVoiceMode() {
             gamificationState.voiceUnlocked = true;
-            saveGamificationState();
+            // Server already set voice_unlocked=true during increment
 
             const voiceToggle = document.getElementById('voiceToggle');
             if (voiceToggle) voiceToggle.style.display = 'flex';
         }
 
-        function toggleWizardMode() {
+        async function toggleWizardMode() {
             if (!gamificationState.wizardUnlocked) return;
 
-            gamificationState.wizardActive = !gamificationState.wizardActive;
-            saveGamificationState();
+            const newState = !gamificationState.wizardActive;
+            try {
+                const resp = await fetch('/api/gamification/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ feature: 'wizard_active', active: newState })
+                });
+                if (resp.ok) {
+                    gamificationState.wizardActive = newState;
+                } else {
+                    console.warn('Toggle wizard failed:', resp.status);
+                    return;
+                }
+            } catch (e) {
+                // Fallback: toggle locally if server unavailable
+                gamificationState.wizardActive = newState;
+                console.warn('Toggle wizard server error, local fallback', e);
+            }
 
             const body = document.body;
             const btn = document.getElementById('wizardToggle');
@@ -4450,11 +4556,26 @@
             }
         }
 
-        function toggleVoiceMode() {
+        async function toggleVoiceMode() {
             if (!gamificationState.voiceUnlocked) return;
 
-            gamificationState.voiceActive = !gamificationState.voiceActive;
-            saveGamificationState();
+            const newState = !gamificationState.voiceActive;
+            try {
+                const resp = await fetch('/api/gamification/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ feature: 'voice_active', active: newState })
+                });
+                if (resp.ok) {
+                    gamificationState.voiceActive = newState;
+                } else {
+                    console.warn('Toggle voice failed:', resp.status);
+                    return;
+                }
+            } catch (e) {
+                gamificationState.voiceActive = newState;
+                console.warn('Toggle voice server error, local fallback', e);
+            }
 
             const btn = document.getElementById('voiceToggle');
             if (gamificationState.voiceActive) {
@@ -4469,14 +4590,19 @@
             const rankDisplay = document.getElementById('rankDisplay');
             if (!rankDisplay) return;
 
+            const count = gamificationState.searchCount;
             let currentRank = null;
             for (const m of MILESTONES) {
-                if (gamificationState.searchCount >= m.count) currentRank = m;
+                if (count >= m.count) currentRank = m;
             }
 
             if (currentRank) {
                 rankDisplay.style.display = 'flex';
-                rankDisplay.innerHTML = `<i class="fas ${currentRank.icon}"></i> ${currentRank.title}`;
+                rankDisplay.innerHTML = `<i class="fas ${currentRank.icon}"></i> ${currentRank.title} <span class="rank-count">${count}</span>`;
+            } else if (count > 0) {
+                // Show count even before first milestone
+                rankDisplay.style.display = 'flex';
+                rankDisplay.innerHTML = `<i class="fas fa-search"></i> <span class="rank-count">${count}</span>`;
             } else {
                 rankDisplay.style.display = 'none';
             }
@@ -4727,22 +4853,9 @@
         // ---- Dev Helpers (console only) ----
 
         window.resetWizard = function() {
-            localStorage.removeItem('mw_search_count');
-            localStorage.removeItem('mw_wizard_unlocked');
-            localStorage.removeItem('mw_wizard_active');
-            localStorage.removeItem('mw_voice_unlocked');
-            localStorage.removeItem('mw_voice_active');
-            localStorage.removeItem('mw_shown_milestones');
+            // Only clears localStorage cache - server stats are permanent
+            clearLocalGamification();
             location.reload();
-        };
-
-        window.fastForwardTo = function(n) {
-            gamificationState.searchCount = n - 1;
-            gamificationState.shownMilestones = MILESTONES
-                .filter(m => m.count < n)
-                .map(m => m.count);
-            saveGamificationState();
-            incrementSearchCount();
         };
 
         window.getWizardState = function() {
